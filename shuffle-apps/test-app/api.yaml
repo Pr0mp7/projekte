@@ -1,0 +1,36 @@
+app_version: 1.0.0
+name: test-app
+description: Test app using App SDK 0.0.25
+contact_info:
+  name: Your Name
+  url: https://github.com/yourusername
+  email: your.email@example.com
+authentication:
+  required: false
+  parameters: []
+actions:
+  - name: hello_world
+    description: Simple hello world test with datastore functionality
+    parameters:
+      - name: name
+        description: Name to greet
+        example: "World"
+        required: false
+        schema:
+          type: string
+    returns:
+      schema:
+        type: string
+  - name: test_execution_isolation
+    description: Test execution isolation features of App SDK 0.0.25
+    parameters:
+      - name: execution_id
+        description: Unique execution identifier
+        example: "test123"
+        required: false
+        schema:
+          type: string
+    returns:
+      schema:
+        type: string
+large_image: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==

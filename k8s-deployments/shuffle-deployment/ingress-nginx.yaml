@@ -1,0 +1,20 @@
+controller:
+  image:
+    image: rancher/nginx-ingress-controller
+    tag: v1.12.1-hardened1
+    digest: ""
+    pullPolicy: Never
+  admissionWebhooks:
+    patch:
+     image:
+       image: rancher/mirrored-ingress-nginx-kube-webhook-certgen
+       tag: v1.5.2
+       pullPolicy: Never
+       digest: ""
+  service:
+    type: NodePort
+  hostPort:
+    enabled: true
+global:
+  image:
+    registry: docker.io

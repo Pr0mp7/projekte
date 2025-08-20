@@ -1,0 +1,13 @@
+
+installCRDs: true
+persistence:
+  defaultClass: true
+  defaultFsType: ext4
+  defaultMkfsParams: ""
+  defaultDataLocality: disabled
+  reclaimPolicy: Delete
+defaultSettings:
+  defaultReplicaCount: 1
+
+image:
+  pullPolicy: Never

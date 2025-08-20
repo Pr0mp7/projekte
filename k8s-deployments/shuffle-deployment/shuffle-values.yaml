@@ -1,0 +1,82 @@
+orborus:
+  extraEnvVars:
+    - name: CLEANUP
+      value: "true"
+    - name: SHUFFLE_ORBORUS_EXECUTION_TIMEOUT
+      value: "180"
+    - name: SHUFFLE_ORBORUS_EXECUTION_CONCURRENCY
+      value: "10"
+    - name: SHUFFLE_SWARM_CONFIG
+      value: "run"
+    - name: SHUFFLE_KUBERNETES_USE_JOBS
+      value: "false"
+    - name: SHUFFLE_KUBERNETES_USE_PODS
+      value: "true"
+    - name: SHUFFLE_KUBERNETES_USE_DEPLOYMENTS
+      value: "false"
+    - name: SHUFFLE_WORKER_MODE
+      value: kubernetes
+    - name: SHUFFLE_APP_SDK_VERSION
+      value: "0.0.25"
+    - name: SHUFFLE_APP_SDK_IMAGE_PULL_POLICY
+      value: "Never"
+    - name: SHUFFLE_PIPELINE_MODE
+      value: "true"
+    - name: SHUFFLE_SKIP_PIPELINES
+      value: "true"
+    - name: SHUFFLE_PIPELINE_URL
+      value: "http://shuffle-backend.shuffle.svc.cluster.local:5001"
+    - name: SHUFFLE_VERBOSE
+      value: "false"
+    - name: SHUFFLE_CLEANUP
+      value: "true"
+    - name: SHUFFLE_CLEANUP_INTERVAL
+      value: "60"
+
+backend:
+  image:
+    pullPolicy: Never
+    tag: 2.0.2
+frontend:
+  image:
+    pullPolicy: Never
+    tag: 2.0.2
+ingress:
+  enabled: true
+  extraTls:
+  - hosts:
+    - rhostesk8s001.labwi.sva.de
+    secretName: shuffle-tls
+  hostname: rhostesk8s001.labwi.sva.de
+  ingressClassName: nginx
+  tls: false
+opensearch:
+  coordinating:
+    replicaCount: 1
+  dashboards:
+    enabled: false
+  data:
+    replicaCount: 1
+  enabled: true
+  global:
+    storageClass: longhorn
+  ingest:
+    replicaCount: 0
+  master:
+    replicaCount: 1
+persistence:
+  appBuilder:
+    accessModes:
+    - ReadWriteMany
+    size: 5Gi
+    storageClass: longhorn
+  apps:
+    accessModes:
+    - ReadWriteMany
+    size: 5Gi
+    storageClass: longhorn
+worker:
+  image:
+    pullPolicy: Never
+    tag: 2.0.2
+ 

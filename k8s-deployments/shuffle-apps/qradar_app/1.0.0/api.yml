@@ -1,0 +1,728 @@
+walkoff_version: 1.0.1
+app_version: 1.0
+name: qradar_app
+description: Integration with IBM QRadar SIEM platform
+contact_info:
+  name: "Khalil Ben Rhouma"
+  url: "https://github.com/Khalilkbr"
+  email: "khalil.ben-rhouma@idoubles.net"
+actions:
+  - name: post_add_offense_note
+    description: Adds a note to a QRadar offense
+    parameters:
+      - name: apikey
+        description: API key for authentication
+        type: string
+        required: true
+        sensitive: true
+      - name: url
+        description: Base URL of QRadar instance
+        type: string
+        required: true
+      - name: offense_id
+        description: ID of the offense to add note to
+        type: integer
+        required: true
+      - name: headers
+        description: Additional headers (newline separated key:value pairs)
+        type: string
+        required: false
+      - name: queries
+        description: Additional query parameters (key=value pairs separated by &)
+        type: string
+        required: false
+      - name: body
+        description: Request body content
+        type: string
+        required: false
+      - name: ssl_verify
+        description: Whether to verify SSL certificate (true/false)
+        type: boolean
+        required: false
+      - name: to_file
+        description: Whether to return response as file
+        type: boolean
+        required: false
+    returns:
+      schema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          file_id:
+            type: string
+          status:
+            type: integer
+          error:
+            type: string
+
+  - name: post_update_offense
+    description: Updates a QRadar offense
+    parameters:
+      - name: apikey
+        type: string
+        required: true
+        sensitive: true
+      - name: url
+        type: string
+        required: true
+      - name: offense_id
+        type: integer
+        required: true
+      - name: headers
+        type: string
+        required: false
+      - name: queries
+        type: string
+        required: false
+      - name: body
+        type: string
+        required: false
+      - name: ssl_verify
+        type: boolean
+        required: false
+      - name: to_file
+        type: boolean
+        required: false
+    returns:
+      schema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          file_id:
+            type: string
+          status:
+            type: integer
+          error:
+            type: string
+
+  - name: get_rules
+    description: Retrieves list of rules from QRadar
+    parameters:
+      - name: apikey
+        type: string
+        required: true
+        sensitive: true
+      - name: url
+        type: string
+        required: true
+      - name: headers
+        type: string
+        required: false
+      - name: queries
+        type: string
+        required: false
+      - name: fields
+        description: Fields to include in response
+        type: string
+        required: false
+      - name: filter
+        description: Filter expression
+        type: string
+        required: false
+      - name: ssl_verify
+        type: boolean
+        required: false
+      - name: to_file
+        type: boolean
+        required: false
+    returns:
+      schema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          rules:
+            type: array
+            items:
+              type: object
+          error:
+            type: string
+
+  - name: delete_the_rule
+    description: Deletes a rule from QRadar
+    parameters:
+      - name: apikey
+        type: string
+        required: true
+        sensitive: true
+      - name: url
+        type: string
+        required: true
+      - name: id
+        description: ID of the rule to delete
+        type: integer
+        required: true
+      - name: headers
+        type: string
+        required: false
+      - name: queries
+        type: string
+        required: false
+      - name: body
+        type: string
+        required: false
+      - name: ssl_verify
+        type: boolean
+        required: false
+      - name: to_file
+        type: boolean
+        required: false
+    returns:
+      schema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          error:
+            type: string
+
+  - name: get_rule_offense_contributions
+    description: Gets rule offense contributions
+    parameters:
+      - name: apikey
+        type: string
+        required: true
+        sensitive: true
+      - name: url
+        type: string
+        required: true
+      - name: headers
+        type: string
+        required: false
+      - name: queries
+        type: string
+        required: false
+      - name: filter
+        type: string
+        required: false
+      - name: sort
+        type: string
+        required: false
+      - name: fields
+        type: string
+        required: false
+      - name: ssl_verify
+        type: boolean
+        required: false
+      - name: to_file
+        type: boolean
+        required: false
+    returns:
+      schema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          contributions:
+            type: array
+            items:
+              type: object
+          error:
+            type: string
+
+  - name: get_ariel_searches
+    description: Retrieves Ariel searches
+    parameters:
+      - name: apikey
+        type: string
+        required: true
+        sensitive: true
+      - name: url
+        type: string
+        required: true
+      - name: headers
+        type: string
+        required: false
+      - name: queries
+        type: string
+        required: false
+      - name: db_name
+        description: Database name to search
+        type: string
+        required: false
+      - name: data_lake
+        description: Data lake to search
+        type: string
+        required: false
+      - name: filter
+        type: string
+        required: false
+      - name: ssl_verify
+        type: boolean
+        required: false
+      - name: to_file
+        type: boolean
+        required: false
+    returns:
+      schema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          searches:
+            type: array
+            items:
+              type: object
+          error:
+            type: string
+
+  - name: create_ariel_search
+    description: Creates a new Ariel search
+    parameters:
+      - name: apikey
+        type: string
+        required: true
+        sensitive: true
+      - name: url
+        type: string
+        required: true
+      - name: headers
+        type: string
+        required: false
+      - name: queries
+        type: string
+        required: false
+      - name: query_expression
+        description: Ariel query expression
+        type: string
+        required: false
+      - name: body
+        type: string
+        required: false
+      - name: ssl_verify
+        type: boolean
+        required: false
+      - name: to_file
+        type: boolean
+        required: false
+    returns:
+      schema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          search_id:
+            type: string
+          error:
+            type: string
+
+  - name: get_ariel_search_results
+    description: Gets results of an Ariel search
+    parameters:
+      - name: apikey
+        type: string
+        required: true
+        sensitive: true
+      - name: url
+        type: string
+        required: true
+      - name: search_id
+        description: ID of the search to get results for
+        type: string
+        required: true
+      - name: headers
+        type: string
+        required: false
+      - name: queries
+        type: string
+        required: false
+      - name: data_lake
+        type: string
+        required: false
+      - name: ssl_verify
+        type: boolean
+        required: false
+      - name: to_file
+        type: boolean
+        required: false
+    returns:
+      schema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          results:
+            type: array
+            items:
+              type: object
+          error:
+            type: string
+
+  - name: get_list_offenses
+    description: Retrieves list of offenses from QRadar
+    parameters:
+      - name: apikey
+        type: string
+        required: true
+        sensitive: true
+      - name: url
+        type: string
+        required: true
+      - name: headers
+        type: string
+        required: false
+      - name: queries
+        type: string
+        required: false
+      - name: ssl_verify
+        type: boolean
+        required: false
+      - name: to_file
+        type: boolean
+        required: false
+    returns:
+      schema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          offenses:
+            type: array
+            items:
+              type: object
+          error:
+            type: string
+
+  - name: get_offense
+    description: Retrieves details of a specific offense
+    parameters:
+      - name: apikey
+        type: string
+        required: true
+        sensitive: true
+      - name: url
+        type: string
+        required: true
+      - name: offence_id
+        description: ID of the offense to retrieve
+        type: integer
+        required: true
+      - name: headers
+        type: string
+        required: false
+      - name: queries
+        type: string
+        required: false
+      - name: ssl_verify
+        type: boolean
+        required: false
+      - name: to_file
+        type: boolean
+        required: false
+    returns:
+      schema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          offense:
+            type: object
+          error:
+            type: string
+
+  - name: post_close_offense
+    description: Closes a QRadar offense
+    parameters:
+      - name: apikey
+        type: string
+        required: true
+        sensitive: true
+      - name: url
+        type: string
+        required: true
+      - name: offense_id
+        type: integer
+        required: true
+      - name: headers
+        type: string
+        required: false
+      - name: queries
+        type: string
+        required: false
+      - name: body
+        type: string
+        required: false
+      - name: ssl_verify
+        type: boolean
+        required: false
+      - name: to_file
+        type: boolean
+        required: false
+    returns:
+      schema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          error:
+            type: string
+
+  
+  - name: post_new_search
+    description: Creates a new Ariel search in QRadar
+    parameters:
+      - name: apikey
+        type: string
+        required: true
+        sensitive: true
+      - name: url
+        type: string
+        required: true
+      - name: headers
+        type: string
+        required: false
+      - name: queries
+        type: string
+        required: false
+      - name: query_expression
+        description: The Ariel search query expression
+        type: string
+        required: true
+      - name: body
+        type: string
+        required: false
+      - name: ssl_verify
+        type: boolean
+        required: false
+      - name: to_file
+        type: boolean
+        required: false
+    returns:
+      schema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          search_id:
+            type: string
+          error:
+            type: string
+
+  - name: get_rule
+    description: Retrieves details of a specific QRadar rule
+    parameters:
+      - name: apikey
+        type: string
+        required: true
+        sensitive: true
+      - name: url
+        type: string
+        required: true
+      - name: id
+        description: ID of the rule to retrieve
+        type: integer
+        required: true
+      - name: headers
+        type: string
+        required: false
+      - name: queries
+        type: string
+        required: false
+      - name: fields
+        description: Fields to include in the response
+        type: string
+        required: false
+      - name: ssl_verify
+        type: boolean
+        required: false
+      - name: to_file
+        type: boolean
+        required: false
+    returns:
+      schema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          rule:
+            type: object
+          error:
+            type: string
+
+  - name: post_update_a_rule
+    description: Updates an existing QRadar rule
+    parameters:
+      - name: apikey
+        type: string
+        required: true
+        sensitive: true
+      - name: url
+        type: string
+        required: true
+      - name: id
+        description: ID of the rule to update
+        type: integer
+        required: true
+      - name: headers
+        type: string
+        required: false
+      - name: queries
+        type: string
+        required: false
+      - name: rule
+        description: Updated rule definition
+        type: string
+        required: true
+      - name: body
+        type: string
+        required: false
+      - name: ssl_verify
+        type: boolean
+        required: false
+      - name: to_file
+        type: boolean
+        required: false
+    returns:
+      schema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          updated_rule:
+            type: object
+          error:
+            type: string
+
+  - name: get_authorized_services
+    description: Retrieves list of authorized services in QRadar
+    parameters:
+      - name: apikey
+        type: string
+        required: true
+        sensitive: true
+      - name: url
+        type: string
+        required: true
+      - name: headers
+        type: string
+        required: false
+      - name: queries
+        type: string
+        required: false
+      - name: current_authorized_service
+        description: Filter for specific authorized service
+        type: string
+        required: false
+      - name: fields
+        description: Fields to include in response
+        type: string
+        required: false
+      - name: filter
+        description: Filter expression
+        type: string
+        required: false
+      - name: ssl_verify
+        type: boolean
+        required: false
+      - name: to_file
+        type: boolean
+        required: false
+    returns:
+      schema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          authorized_services:
+            type: array
+            items:
+              type: object
+          error:
+            type: string
+
+  - name: post_create_an_authorized_services
+    description: Creates a new authorized service in QRadar
+    parameters:
+      - name: apikey
+        type: string
+        required: true
+        sensitive: true
+      - name: url
+        type: string
+        required: true
+      - name: authorized_service
+        description: Definition of the authorized service to create
+        type: string
+        required: true
+      - name: headers
+        type: string
+        required: false
+      - name: queries
+        type: string
+        required: false
+      - name: body
+        type: string
+        required: false
+      - name: ssl_verify
+        type: boolean
+        required: false
+      - name: to_file
+        type: boolean
+        required: false
+    returns:
+      schema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          service_id:
+            type: string
+          error:
+            type: string
+
+
+  - name: custom_action
+    description: Performs a custom API request to QRadar
+    parameters:
+      - name: apikey
+        type: string
+        required: true
+        sensitive: true
+      - name: method
+        description: HTTP method (GET, POST, PUT, DELETE, etc.)
+        type: string
+        required: true
+      - name: url
+        description: Base URL of QRadar instance
+        type: string
+        required: true
+      - name: headers
+        description: Additional headers (newline separated key:value pairs)
+        type: string
+        required: false
+      - name: queries
+        description: Additional query parameters (key=value pairs separated by &)
+        type: string
+        required: false
+      - name: path
+        description: API endpoint path
+        type: string
+        required: false
+      - name: ssl_verify
+        description: Whether to verify SSL certificate (true/false)
+        type: boolean
+        required: false
+      - name: body
+        description: Request body content
+        type: string
+        required: false
+    returns:
+      schema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          status:
+            type: integer
+          body:
+            type: object
+          url:
+            type: string
+          headers:
+            type: object
+          cookies:
+            type: object
+          error:
+            type: string

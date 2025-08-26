@@ -1,0 +1,28 @@
+# Test PVC to verify storage class works
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-pvc-longhorn
+  namespace: misp-test
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+# Test PVC with local-path for comparison
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-pvc-local-path
+  namespace: misp-test
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi

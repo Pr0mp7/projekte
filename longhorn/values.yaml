@@ -1,0 +1,191 @@
+# Longhorn Storage Configuration for RKE2 Cluster
+
+longhorn:
+  # Default storage class settings
+  defaultSettings:
+    # Create default storage class
+    createDefaultStorageClass: true
+    defaultStorageClassReplicaCount: 1  # Single control plane: reduced to 1
+    
+    # Backup settings
+    backupTarget: ""  # Configure S3/NFS backup target if needed
+    backupTargetCredentialSecret: ""
+    
+    # Node and disk management
+    storageOverProvisioningPercentage: 100
+    storageMinimalAvailablePercentage: 25
+    upgradeChecker: true
+    defaultReplicaCount: 1  # Single control plane: reduced to 1
+    defaultDataLocality: "best-effort"  # Single control plane: prefer local storage
+    replicaSoftAntiAffinity: false  # Single control plane: keep disabled
+    replicaAutoBalance: "ignored"  # Options: ignored, least-effort, best-effort
+    
+    # Volume settings
+    autoSalvage: true
+    autoDeletePodWhenVolumeDetachedUnexpectedly: true
+    disableSchedulingOnCordonedNode: true
+    replicaZoneSoftAntiAffinity: false
+    nodeDownPodDeletionPolicy: "delete-both-statefulset-and-deployment-pod"
+    allowNodeDrainWithLastHealthyReplica: false
+    mkfsExt4Parameters: ""
+    disableReplicaRebuild: false
+    replicaReplenishmentWaitInterval: 600
+    concurrentReplicaRebuildPerNodeLimit: 5
+    disableRevisionCounter: true
+    systemManagedPodsImagePullPolicy: "if-not-present"
+    allowVolumeCreationWithDegradedAvailability: true
+    autoCleanupSystemGeneratedSnapshot: true
+    concurrentAutomaticEngineUpgradePerNodeLimit: 0
+    backingImageCleanupWaitInterval: 60
+    backingImageRecoveryWaitInterval: 300
+    guaranteedEngineManagerCPU: 12
+    guaranteedReplicaManagerCPU: 12
+    
+  # Service configuration
+  service:
+    ui:
+      type: ClusterIP
+      nodePort: null
+    manager:
+      type: ClusterIP
+      nodePort: ""
+
+  # Persistence settings
+  persistence:
+    defaultClass: true
+    defaultFsType: ext4
+    defaultClassReplicaCount: 1  # Single control plane: reduced to 1
+    defaultDataLocality: best-effort  # Single control plane: prefer local storage
+    reclaimPolicy: Delete
+    migratable: false
+    recurringJobSelector:
+      enable: false
+      jobList: []
+    backingImage:
+      enable: false
+      name: ~
+      dataSourceType: ~
+      dataSourceParameters: ~
+      expectedChecksum: ~
+    defaultNodeSelector:
+      enable: false
+      selector: ""
+    removeSnapshotsDuringFilesystemTrim: "ignored"
+
+  # CSI Driver settings
+  csi:
+    kubeletRootDir: /var/lib/kubelet
+    attacherReplicaCount: 1  # Single control plane: reduced to 1
+    provisionerReplicaCount: 1  # Single control plane: reduced to 1
+    resizerReplicaCount: 1  # Single control plane: reduced to 1
+    snapshotterReplicaCount: 1  # Single control plane: reduced to 1
+
+  # UI Ingress (disabled by default, configure if needed)
+  ingress:
+    enabled: false
+    host: longhorn.local
+    tls: false
+    tlsSecret: longhorn.local-tls
+    path: /
+    annotations: {}
+
+  # Resource limits for Longhorn components
+  longhornManager:
+    priorityClass: ~
+    tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "node-role.kubernetes.io/master"
+        operator: "Exists"
+        effect: "NoSchedule"
+    nodeSelector: {}
+    resources:
+      limits:
+        cpu: 1
+        memory: 512Mi
+      requests:
+        cpu: 0.1
+        memory: 512Mi
+
+  longhornDriver:
+    priorityClass: ~
+    tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "node-role.kubernetes.io/master"
+        operator: "Exists" 
+        effect: "NoSchedule"
+    nodeSelector: {}
+    resources:
+      limits:
+        cpu: 1
+        memory: 512Mi
+      requests:
+        cpu: 0.1
+        memory: 512Mi
+
+  longhornUI:
+    priorityClass: ~
+    tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "node-role.kubernetes.io/master"
+        operator: "Exists"
+        effect: "NoSchedule"
+    nodeSelector: {}
+    resources:
+      limits:
+        cpu: 1
+        memory: 512Mi
+      requests:
+        cpu: 0.1
+        memory: 512Mi
+
+  # Image settings
+  image:
+    longhorn:
+      engine:
+        repository: longhornio/longhorn-engine
+        tag: v1.5.3
+      manager:
+        repository: longhornio/longhorn-manager
+        tag: v1.5.3
+      ui:
+        repository: longhornio/longhorn-ui
+        tag: v1.5.3
+      instanceManager:
+        repository: longhornio/longhorn-instance-manager
+        tag: v1.5.3
+      shareManager:
+        repository: longhornio/longhorn-share-manager
+        tag: v1.5.3
+      backingImageManager:
+        repository: longhornio/backing-image-manager
+        tag: v1.5.3
+    csi:
+      attacher:
+        repository: longhornio/csi-attacher
+        tag: v4.2.0
+      provisioner:
+        repository: longhornio/csi-provisioner
+        tag: v3.4.1
+      nodeDriverRegistrar:
+        repository: longhornio/csi-node-driver-registrar
+        tag: v2.7.0
+      resizer:
+        repository: longhornio/csi-resizer
+        tag: v1.7.0
+      snapshotter:
+        repository: longhornio/csi-snapshotter
+        tag: v6.2.1
+      livenessProbe:
+        repository: longhornio/livenessprobe
+        tag: v2.9.0
+    pullPolicy: IfNotPresent
+
+  # Service Monitor for Prometheus (if using)
+  serviceMonitor:
+    enabled: false

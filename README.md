@@ -7,6 +7,12 @@ This repository contains multiple sub-projects related to Shuffle automation pla
 ```
 projekte/
 ├── README.md                    # This file
+├── longhorn/                    # Longhorn storage Helm chart
+│   ├── Chart.yaml               # Helm chart metadata
+│   └── values.yaml              # Longhorn configuration
+├── ingress-nginx/               # Ingress-NGINX Helm chart
+│   ├── Chart.yaml               # Helm chart metadata
+│   └── values.yaml              # NGINX ingress configuration
 ├── shuffle-apps/                # Shuffle automation apps
 │   ├── README.md
 │   ├── aws_s3/                  # AWS S3 & MinIO integration
@@ -22,6 +28,33 @@ projekte/
 ```
 
 ## 🚀 Sub-Projects Overview
+
+### 🗄️ [RKE2 Helm Charts](./longhorn/) & [Ingress-NGINX](./ingress-nginx/)
+
+**Essential infrastructure Helm charts for RKE2 clusters**
+
+| Component | Version | Description | Purpose |
+|-----------|---------|-------------|---------|
+| Longhorn | 1.5.3 | Distributed block storage | Persistent storage for RKE2 |
+| Ingress-NGINX | 4.8.3 | Load balancer & ingress | External traffic routing |
+
+**Key Features:**
+- Production-ready Helm configurations
+- Optimized for RKE2 environments  
+- High availability setup
+- Comprehensive documentation
+- Security-focused configuration
+
+**Deployment Commands:**
+```bash
+# Add repositories and deploy Longhorn storage
+helm repo add longhorn https://charts.longhorn.io && helm repo update
+helm install longhorn longhorn/longhorn --namespace longhorn-system --create-namespace --values longhorn/values.yaml
+
+# Add repositories and deploy Ingress-NGINX
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx && helm repo update
+helm install nginx-custom ingress-nginx/ingress-nginx --namespace ingress-nginx-custom --create-namespace --values ingress-nginx/values.yaml
+```
 
 ### 📱 [Shuffle Apps](./shuffle-apps/)
 

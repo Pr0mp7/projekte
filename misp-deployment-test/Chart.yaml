@@ -1,0 +1,38 @@
+apiVersion: v2
+name: misp-test
+description: A lightweight Helm chart for testing MISP deployment on RKE2
+
+type: application
+version: 0.1.0
+appVersion: 2.4.214
+
+keywords:
+- misp
+- threat-intelligence
+- security
+- test
+
+home: https://www.misp-project.org/
+sources:
+- https://github.com/MISP/MISP
+
+maintainers:
+- name: DevSecOps Team
+  email: devsecops@internal.local
+
+dependencies:
+- name: redis
+  version: 19.0.2
+  repository: https://charts.bitnami.com/bitnami
+  condition: redis.enabled
+
+- name: mariadb
+  version: 15.2.0
+  repository: https://charts.bitnami.com/bitnami
+  condition: mariadb.enabled
+
+annotations:
+  category: Security
+  images: |
+    - name: misp
+      image: registry.gitlab.com/jupiter8595746/container-images/misp:2.4.214

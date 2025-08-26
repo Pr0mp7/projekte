@@ -1,0 +1,22 @@
+{{- if .Values.misp.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "misp-test.fullname" . }}-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "misp-test.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.misp.persistence.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.misp.persistence.size }}
+  {{- if .Values.misp.persistence.storageClass }}
+  {{- if (eq "-" .Values.misp.persistence.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ .Values.misp.persistence.storageClass }}
+  {{- end }}
+  {{- end }}
+{{- end }}

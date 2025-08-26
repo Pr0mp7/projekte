@@ -1,0 +1,146 @@
+{{- include "misp-test.validateValues" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "misp-test.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "misp-test.labels" . | nindent 4 }}
+  annotations:
+    checksum/config: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+spec:
+  replicas: {{ .Values.misp.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "misp-test.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "misp-test.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "misp-test.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.misp.securityContext | nindent 8 }}
+      {{- if or .Values.redis.enabled .Values.mariadb.enabled .Values.initContainers.waitForDependencies.enabled }}
+      initContainers:
+        {{- if .Values.initContainers.waitForDependencies.enabled }}
+        - name: wait-for-dependencies
+          image: "{{ .Values.initContainers.waitForDependencies.image.repository }}:{{ .Values.initContainers.waitForDependencies.image.tag }}"
+          imagePullPolicy: {{ .Values.initContainers.waitForDependencies.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for dependencies to be ready..."
+              {{- if .Values.mariadb.enabled }}
+              until nc -z {{ .Release.Name }}-mariadb 3306; do
+                echo "Waiting for MariaDB..."
+                sleep 5
+              done
+              echo "MariaDB is ready"
+              {{- end }}
+              {{- if .Values.redis.enabled }}
+              until nc -z {{ .Release.Name }}-redis-master 6379; do
+                echo "Waiting for Redis..."
+                sleep 5
+              done
+              echo "Redis is ready"
+              {{- end }}
+              echo "All dependencies are ready"
+          securityContext:
+            runAsUser: 1001
+            runAsGroup: 1001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: misp
+          image: "{{ .Values.misp.image.repository }}:{{ .Values.misp.image.tag }}"
+          imagePullPolicy: {{ .Values.misp.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.misp.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          env:
+            {{- include "misp-test.mispEnvVars" . | nindent 12 }}
+          {{- if .Values.misp.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.misp.livenessProbe.httpGet.path }}
+              port: {{ .Values.misp.livenessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.misp.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.misp.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.misp.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.misp.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.misp.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.misp.readinessProbe.httpGet.path }}
+              port: {{ .Values.misp.readinessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.misp.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.misp.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.misp.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.misp.readinessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.misp.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.misp.startupProbe.httpGet.path }}
+              port: {{ .Values.misp.startupProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.misp.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.misp.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.misp.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.misp.startupProbe.failureThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.misp.resources | nindent 12 }}
+          {{- if .Values.misp.persistence.enabled }}
+          volumeMounts:
+            - name: misp-data
+              mountPath: /var/www/MISP/app/files
+              subPath: files
+            - name: misp-data
+              mountPath: /var/www/MISP/app/tmp
+              subPath: tmp
+            - name: misp-data
+              mountPath: /var/www/MISP/app/Config
+              subPath: config
+          {{- end }}
+      {{- if .Values.misp.persistence.enabled }}
+      volumes:
+        - name: misp-data
+          persistentVolumeClaim:
+            claimName: {{ include "misp-test.fullname" . }}-data
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

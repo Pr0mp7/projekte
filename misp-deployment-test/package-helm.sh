@@ -41,6 +41,17 @@ echo ""
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
+# Download dependencies first
+echo -e "${YELLOW}Downloading chart dependencies...${NC}"
+helm dependency update .
+
+if [[ $? -eq 0 ]]; then
+    echo -e "${GREEN}✓ Dependencies downloaded${NC}"
+else
+    echo -e "${RED}✗ Failed to download dependencies${NC}"
+    exit 1
+fi
+
 # Lint the chart first
 echo -e "${YELLOW}Linting Helm chart...${NC}"
 helm lint .

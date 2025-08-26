@@ -14,7 +14,7 @@ misp:
 
   # Container image settings - Updated for local build
   image:
-    repository: localhost:5000/misp  # Local registry
+    repository: misp  # Local built image
     pullPolicy: IfNotPresent
     tag: "latest"  # Use your custom built tag
 

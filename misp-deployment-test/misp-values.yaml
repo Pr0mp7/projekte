@@ -12,9 +12,9 @@ misp:
   # Number of replicas (keep low for testing)
   replicaCount: 1
 
-  # Container image settings - Updated for local build
+  # Container image settings - Updated for local registry
   image:
-    repository: misp  # Local built image
+    repository: localhost:5000/misp  # Local registry
     pullPolicy: IfNotPresent
     tag: "latest"  # Use your custom built tag
 
@@ -160,25 +160,33 @@ ingress:
           pathType: Prefix
   tls: []
 
-# Redis configuration
+# Redis configuration - Single instance for control plane only
 redis:
   enabled: true
   auth:
-    enabled: false  # Simplified for on-premises testing
+    enabled: false  # Simplified for testing
+  # Disable Redis cluster/sentinel features
+  architecture: standalone
   master:
     persistence:
       enabled: true
       storageClass: "longhorn"
-      size: 2Gi  # Increased for on-premises
+      size: 1Gi  # Reduced for single node
     resources:
       requests:
+        memory: "64Mi"
+        cpu: "50m"
+      limits:
         memory: "128Mi"
         cpu: "100m"
-      limits:
-        memory: "256Mi"
-        cpu: "200m"
+  # Disable replica nodes completely
+  replica:
+    replicaCount: 0
+  # Disable sentinel (used for Redis HA)
+  sentinel:
+    enabled: false
 
-# MariaDB configuration
+# MariaDB configuration - Single instance for control plane only
 mariadb:
   enabled: true
   auth:
@@ -186,28 +194,36 @@ mariadb:
     username: "misp"
     password: "misppassword123"
     database: "misp"
+  # Disable MariaDB replication/clustering
+  architecture: standalone
   primary:
     persistence:
       enabled: true
       storageClass: "longhorn"
-      size: 5Gi  # Increased for on-premises
+      size: 3Gi  # Reduced for single node
     resources:
       requests:
-        memory: "512Mi"
-        cpu: "200m"
+        memory: "256Mi"
+        cpu: "100m"
       limits:
-        memory: "1Gi"
-        cpu: "500m"
+        memory: "512Mi"
+        cpu: "300m"
+  # Disable secondary MariaDB instances
+  secondary:
+    replicaCount: 0
 
-# Node selector and affinity (run on control plane if needed)
-nodeSelector: {}
-  # node-role.kubernetes.io/control-plane: "true"
+# Node selector and affinity (run on control plane)
+nodeSelector:
+  node-role.kubernetes.io/control-plane: "true"
 
-# Allow scheduling on control plane if needed
-tolerations: []
-  # - key: "node-role.kubernetes.io/control-plane"
-  #   operator: "Exists"
-  #   effect: "NoSchedule"
+# Allow scheduling on control plane
+tolerations:
+  - key: "node-role.kubernetes.io/control-plane"
+    operator: "Exists"
+    effect: "NoSchedule"
+  - key: "node-role.kubernetes.io/master"
+    operator: "Exists" 
+    effect: "NoSchedule"
 
 affinity: {}
 

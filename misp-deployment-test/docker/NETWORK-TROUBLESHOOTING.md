@@ -82,17 +82,32 @@ For completely offline environments:
 
 ## Recommended Build Order
 
-1. **Try CentOS first** (best compatibility):
+### For Restricted Networks (Your Situation)
+
+1. **Try minimal build first** (Ubuntu 22.04 - most reliable):
    ```bash
-   ./build.sh centos
+   ./build.sh minimal
    ```
 
-2. **If CentOS fails, try Alpine** (most reliable):
+2. **If minimal fails, try Alpine** (smallest, different mirrors):
    ```bash
    ./build.sh alpine
    ```
 
-3. **Only use RHEL if you have RH subscription and network access**:
+3. **If both fail, check network connectivity**:
+   ```bash
+   chmod +x test-network.sh
+   ./test-network.sh
+   ```
+
+### For Networks with Good Connectivity
+
+1. **CentOS Stream** (enterprise-like):
+   ```bash
+   ./build.sh centos
+   ```
+
+2. **RHEL UBI** (requires Red Hat access):
    ```bash
    ./build.sh rhel
    ```

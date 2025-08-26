@@ -13,7 +13,7 @@ REGISTRY="localhost:5000"  # Change to your local registry
 BUILD_CONTEXT="."
 
 # Dockerfile selection
-DOCKERFILE_OPTION="${1:-centos}"  # Default to CentOS
+DOCKERFILE_OPTION="${1:-minimal}"  # Default to minimal for restricted networks
 case "$DOCKERFILE_OPTION" in
     "rhel"|"ubi")
         DOCKERFILE="docker/Dockerfile"
@@ -27,11 +27,16 @@ case "$DOCKERFILE_OPTION" in
         DOCKERFILE="docker/Dockerfile.alpine"
         IMAGE_SUFFIX="alpine"
         ;;
+    "minimal"|"ubuntu")
+        DOCKERFILE="docker/Dockerfile.minimal"
+        IMAGE_SUFFIX="minimal"
+        ;;
     *)
-        echo "Usage: $0 [rhel|centos|alpine]"
+        echo "Usage: $0 [minimal|alpine|centos|rhel]"
+        echo "  minimal - Ubuntu 22.04 base image (default, best for restricted networks)"
+        echo "  alpine  - Alpine Linux base image (smallest, fast build)"
+        echo "  centos  - CentOS Stream 9 base image (enterprise-like)"
         echo "  rhel    - RHEL UBI 9 base image (requires RH network access)"
-        echo "  centos  - CentOS Stream 9 base image (default, better network compatibility)"
-        echo "  alpine  - Alpine Linux base image (smallest, fastest build)"
         exit 1
         ;;
 esac
@@ -137,6 +142,7 @@ echo "  helm install misp ./dist/misp-deployment-test-*.tgz -f misp-values.yaml"
 
 echo ""
 echo -e "${YELLOW}Available build options:${NC}"
-echo "  ./build.sh centos  # CentOS Stream 9 (recommended)"
-echo "  ./build.sh alpine  # Alpine Linux (smallest)"
-echo "  ./build.sh rhel    # RHEL UBI 9 (requires RH network)"
+echo "  ./build.sh minimal # Ubuntu 22.04 (default, best for restricted networks)"
+echo "  ./build.sh alpine  # Alpine Linux (smallest, fast build)"
+echo "  ./build.sh centos  # CentOS Stream 9 (enterprise-like)"
+echo "  ./build.sh rhel    # RHEL UBI 9 (requires RH network access)"

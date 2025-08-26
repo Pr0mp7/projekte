@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# MISP Container Build Script for RHEL
+# MISP Container Build Script
 # This script builds the MISP container image for on-premises deployment
+# Supports multiple base images: RHEL UBI, CentOS Stream, Alpine Linux
 
 set -e
 
@@ -10,7 +11,33 @@ IMAGE_NAME="misp"
 IMAGE_TAG="latest"
 REGISTRY="localhost:5000"  # Change to your local registry
 BUILD_CONTEXT="."
-DOCKERFILE="docker/Dockerfile"
+
+# Dockerfile selection
+DOCKERFILE_OPTION="${1:-centos}"  # Default to CentOS
+case "$DOCKERFILE_OPTION" in
+    "rhel"|"ubi")
+        DOCKERFILE="docker/Dockerfile"
+        IMAGE_SUFFIX="rhel"
+        ;;
+    "centos"|"stream")
+        DOCKERFILE="docker/Dockerfile.centos"
+        IMAGE_SUFFIX="centos"
+        ;;
+    "alpine")
+        DOCKERFILE="docker/Dockerfile.alpine"
+        IMAGE_SUFFIX="alpine"
+        ;;
+    *)
+        echo "Usage: $0 [rhel|centos|alpine]"
+        echo "  rhel    - RHEL UBI 9 base image (requires RH network access)"
+        echo "  centos  - CentOS Stream 9 base image (default, better network compatibility)"
+        echo "  alpine  - Alpine Linux base image (smallest, fastest build)"
+        exit 1
+        ;;
+esac
+
+# Update image name with suffix
+IMAGE_NAME_FULL="${IMAGE_NAME}-${IMAGE_SUFFIX}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -35,7 +62,8 @@ if [[ ! -f "$DOCKERFILE" ]]; then
 fi
 
 echo -e "${YELLOW}Build Configuration:${NC}"
-echo "  Image Name: $IMAGE_NAME"
+echo "  Base Image: $DOCKERFILE_OPTION"
+echo "  Image Name: $IMAGE_NAME_FULL"
 echo "  Image Tag: $IMAGE_TAG"
 echo "  Registry: $REGISTRY"
 echo "  Build Context: $BUILD_CONTEXT"
@@ -51,7 +79,7 @@ BUILD_ARGS="$BUILD_ARGS --build-arg PHP_VER=8.2"
 echo -e "${YELLOW}Building MISP container image...${NC}"
 docker build \
     $BUILD_ARGS \
-    -t $IMAGE_NAME:$IMAGE_TAG \
+    -t $IMAGE_NAME_FULL:$IMAGE_TAG \
     -f $DOCKERFILE \
     $BUILD_CONTEXT
 
@@ -62,13 +90,18 @@ else
     exit 1
 fi
 
+# Also tag without suffix for backward compatibility
+docker tag $IMAGE_NAME_FULL:$IMAGE_TAG $IMAGE_NAME:$IMAGE_TAG
+
 # Tag for registry
 if [[ -n "$REGISTRY" ]]; then
     echo -e "${YELLOW}Tagging image for registry...${NC}"
-    docker tag $IMAGE_NAME:$IMAGE_TAG $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+    docker tag $IMAGE_NAME_FULL:$IMAGE_TAG $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+    docker tag $IMAGE_NAME_FULL:$IMAGE_TAG $REGISTRY/$IMAGE_NAME_FULL:$IMAGE_TAG
     
     if [[ $? -eq 0 ]]; then
         echo -e "${GREEN}✓ Image tagged for registry: $REGISTRY/$IMAGE_NAME:$IMAGE_TAG${NC}"
+        echo -e "${GREEN}✓ Image tagged for registry: $REGISTRY/$IMAGE_NAME_FULL:$IMAGE_TAG${NC}"
     else
         echo -e "${RED}✗ Failed to tag image for registry${NC}"
         exit 1
@@ -77,16 +110,21 @@ fi
 
 # Show image info
 echo -e "${YELLOW}Image Information:${NC}"
-docker images | grep $IMAGE_NAME
+docker images | grep -E "$IMAGE_NAME|$IMAGE_NAME_FULL"
 
 echo ""
 echo -e "${GREEN}=== Build Complete ===${NC}"
-echo "Local image: $IMAGE_NAME:$IMAGE_TAG"
+echo "Local images:"
+echo "  $IMAGE_NAME_FULL:$IMAGE_TAG"
+echo "  $IMAGE_NAME:$IMAGE_TAG (compatibility alias)"
 if [[ -n "$REGISTRY" ]]; then
-    echo "Registry image: $REGISTRY/$IMAGE_NAME:$IMAGE_TAG"
+    echo "Registry images:"
+    echo "  $REGISTRY/$IMAGE_NAME:$IMAGE_TAG"
+    echo "  $REGISTRY/$IMAGE_NAME_FULL:$IMAGE_TAG"
     echo ""
     echo -e "${YELLOW}To push to registry:${NC}"
     echo "  docker push $REGISTRY/$IMAGE_NAME:$IMAGE_TAG"
+    echo "  # or: docker push $REGISTRY/$IMAGE_NAME_FULL:$IMAGE_TAG"
 fi
 
 echo ""
@@ -95,4 +133,10 @@ echo "  docker run -d -p 8080:80 --name misp-test $IMAGE_NAME:$IMAGE_TAG"
 
 echo ""
 echo -e "${YELLOW}To deploy with Helm:${NC}"
-echo "  helm install misp ./misp-deployment-test-*.tgz -f misp-values.yaml"
+echo "  helm install misp ./dist/misp-deployment-test-*.tgz -f misp-values.yaml"
+
+echo ""
+echo -e "${YELLOW}Available build options:${NC}"
+echo "  ./build.sh centos  # CentOS Stream 9 (recommended)"
+echo "  ./build.sh alpine  # Alpine Linux (smallest)"
+echo "  ./build.sh rhel    # RHEL UBI 9 (requires RH network)"

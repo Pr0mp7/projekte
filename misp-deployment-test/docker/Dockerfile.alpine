@@ -1,0 +1,166 @@
+# MISP Docker Image - Alpine Linux (Lightweight Option)
+# Based on Alpine Linux for smaller image size and better network compatibility
+# Optimized for on-premises deployment
+
+FROM alpine:3.19 as base
+
+# Build arguments
+ARG MISP_BRANCH=v2.4.190
+ARG MISP_TAG=v2.4.190
+
+# Set environment variables
+ENV TZ=UTC
+ENV MISP_BRANCH=${MISP_BRANCH}
+ENV MISP_TAG=${MISP_TAG}
+
+# Install packages
+RUN apk update && apk add --no-cache \
+    # System utilities
+    wget curl git unzip vim bash sudo \
+    # Web server
+    apache2 apache2-utils apache2-mod-wsgi \
+    # PHP and extensions
+    php82 php82-apache2 php82-fpm php82-cli \
+    php82-common php82-xml php82-mbstring \
+    php82-pdo php82-pdo_mysql php82-zip php82-gd \
+    php82-opcache php82-json php82-intl php82-bcmath \
+    php82-ldap php82-redis php82-openssl php82-curl \
+    php82-fileinfo php82-simplexml php82-dom \
+    php82-ctype php82-session php82-tokenizer \
+    # Python
+    python3 python3-dev py3-pip \
+    # Build tools
+    gcc g++ make cmake autoconf automake libtool \
+    # Libraries
+    openssl-dev libxml2-dev curl-dev \
+    zlib-dev libpng-dev libjpeg-turbo-dev \
+    freetype-dev oniguruma-dev \
+    # Database client
+    mysql-client mariadb-connector-c-dev \
+    # System services
+    supervisor logrotate tzdata \
+    # Additional dependencies
+    libffi-dev sqlite-dev linux-headers
+
+# Create PHP symlink for easier access
+RUN ln -sf /usr/bin/php82 /usr/bin/php
+
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Create MISP user
+RUN addgroup -S www-data && \
+    adduser -S -G www-data -h /var/www/MISP -s /bin/bash www-data
+
+# Python build stage
+FROM base as python-build
+
+WORKDIR /tmp
+RUN git clone --depth 1 --branch ${MISP_BRANCH} https://github.com/MISP/MISP.git MISP-${MISP_BRANCH}
+
+# Install Python dependencies
+RUN cd MISP-${MISP_BRANCH} && \
+    python3 -m pip install --upgrade pip setuptools wheel && \
+    python3 -m pip install \
+    redis==5.0.1 \
+    lief==0.14.1 \
+    pydeep2==0.5.1 \
+    python-magic==0.4.27 \
+    misp-lib-stix2==3.0.1 \
+    stix2-patterns \
+    maec \
+    mixbox \
+    cybox \
+    pyzmq \
+    python-dateutil && \
+    if [ -f requirements.txt ]; then \
+        # Filter out packages that might not be available on Alpine
+        grep -v "python-magic-bin" requirements.txt | \
+        grep -v "yara-python" | \
+        python3 -m pip install -r /dev/stdin; \
+    fi
+
+# MISP application stage
+FROM base as misp-app
+
+# Copy MISP source
+COPY --from=python-build /tmp/MISP-${MISP_BRANCH} /var/www/MISP
+COPY --from=python-build /usr/lib/python3*/site-packages /usr/lib/python3.11/site-packages
+
+WORKDIR /var/www/MISP
+
+# Set proper permissions
+RUN chown -R www-data:www-data /var/www/MISP && \
+    chmod -R 755 /var/www/MISP
+
+# Install PHP dependencies with Composer
+USER www-data
+RUN if [ -f composer.json ]; then \
+        composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs; \
+    fi
+
+USER root
+
+# Configure PHP
+RUN cp /etc/php82/php.ini /etc/php82/php.ini.bak && \
+    sed -i 's/max_execution_time = 30/max_execution_time = 300/' /etc/php82/php.ini && \
+    sed -i 's/memory_limit = 128M/memory_limit = 2048M/' /etc/php82/php.ini && \
+    sed -i 's/upload_max_filesize = 2M/upload_max_filesize = 50M/' /etc/php82/php.ini && \
+    sed -i 's/post_max_size = 8M/post_max_size = 50M/' /etc/php82/php.ini && \
+    sed -i 's/max_input_time = 60/max_input_time = 300/' /etc/php82/php.ini && \
+    sed -i 's/;date.timezone =/date.timezone = UTC/' /etc/php82/php.ini && \
+    sed -i 's/session.cookie_secure =/session.cookie_secure = 0/' /etc/php82/php.ini
+
+# Configure Apache for Alpine
+COPY docker/apache-misp-alpine.conf /etc/apache2/conf.d/misp.conf
+RUN echo "ServerName localhost" >> /etc/apache2/httpd.conf && \
+    sed -i 's/#LoadModule rewrite_module/LoadModule rewrite_module/' /etc/apache2/httpd.conf && \
+    sed -i 's/User apache/User www-data/' /etc/apache2/httpd.conf && \
+    sed -i 's/Group apache/Group www-data/' /etc/apache2/httpd.conf && \
+    sed -i 's#^DocumentRoot.*#DocumentRoot "/var/www/MISP/app/webroot"#' /etc/apache2/httpd.conf
+
+# Create required directories
+RUN mkdir -p /var/www/MISP/app/tmp/logs && \
+    mkdir -p /var/www/MISP/app/files && \
+    mkdir -p /var/www/MISP/app/files/scripts/tmp && \
+    mkdir -p /var/www/MISP/app/Config && \
+    chmod -R 775 /var/www/MISP/app/tmp && \
+    chmod -R 775 /var/www/MISP/app/files && \
+    chown -R www-data:www-data /var/www/MISP/app/tmp && \
+    chown -R www-data:www-data /var/www/MISP/app/files && \
+    chown -R www-data:www-data /var/www/MISP/app/Config
+
+# Copy configuration files
+COPY docker/entrypoint-alpine.sh /entrypoint.sh
+COPY docker/supervisord-alpine.conf /etc/supervisor/supervisord.conf
+RUN chmod +x /entrypoint.sh
+
+# Create MISP configuration files if they don't exist
+RUN if [ -f /var/www/MISP/app/Config/bootstrap.default.php ]; then \
+      cp /var/www/MISP/app/Config/bootstrap.default.php /var/www/MISP/app/Config/bootstrap.php; \
+    fi && \
+    if [ -f /var/www/MISP/app/Config/database.default.php ]; then \
+      cp /var/www/MISP/app/Config/database.default.php /var/www/MISP/app/Config/database.php; \
+    fi && \
+    if [ -f /var/www/MISP/app/Config/core.default.php ]; then \
+      cp /var/www/MISP/app/Config/core.default.php /var/www/MISP/app/Config/core.php; \
+    fi && \
+    if [ -f /var/www/MISP/app/Config/config.default.php ]; then \
+      cp /var/www/MISP/app/Config/config.default.php /var/www/MISP/app/Config/config.php; \
+    fi && \
+    chown -R www-data:www-data /var/www/MISP/app/Config/
+
+# Create log directory
+RUN mkdir -p /var/log/supervisor && \
+    mkdir -p /run/apache2
+
+# Expose port
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
+
+# Set entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]

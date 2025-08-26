@@ -1,0 +1,236 @@
+# MISP On-Premises Deployment Values
+# Customized for local container registry and RKE2 deployment
+
+# Global configuration
+global:
+  # Image pull secrets for private registries (if needed)
+  imagePullSecrets: []
+    # - name: registry-secret
+
+# MISP Configuration
+misp:
+  # Number of replicas (keep low for testing)
+  replicaCount: 1
+
+  # Container image settings - Updated for local build
+  image:
+    repository: localhost:5000/misp  # Local registry
+    pullPolicy: IfNotPresent
+    tag: "latest"  # Use your custom built tag
+
+  # Service account
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {}
+
+  # MISP environment configuration
+  config:
+    # Basic MISP settings
+    admin:
+      email: admin@misp.local
+      password: "admin123"  # Change for production
+      orgName: "On-Premises Organization"
+    
+    # Site settings - Updated for on-premises
+    baseUrl: "http://rhostesk8s001.labwi.sva.de"
+    
+    # Security settings (relaxed for testing)
+    security:
+      saltKey: "change-me-in-production-salt-key-123456789"
+      enableCSP: false
+      disableSSLRedirect: true
+    
+    # Worker settings (minimal for testing)
+    workers:
+      default: 2
+      prio: 1
+      email: 1
+
+  # Resource limits (adjusted for on-premises)
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+
+  # Persistence settings
+  persistence:
+    enabled: true
+    storageClass: "longhorn"  # Use Longhorn for RKE2
+    accessMode: ReadWriteOnce
+    size: 10Gi  # Increased for on-premises
+
+  # Security context (pod-level)
+  securityContext:
+    runAsUser: 33
+    runAsGroup: 33
+    fsGroup: 33
+    runAsNonRoot: true
+
+  # Container security context
+  containerSecurityContext:
+    runAsUser: 33
+    runAsGroup: 33
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+  # Probes (adjusted for slower startup)
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 120  # Increased for slower startup
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 5
+
+  readinessProbe:
+    enabled: true
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 60
+    periodSeconds: 15
+    timeoutSeconds: 10
+    failureThreshold: 5
+
+  startupProbe:
+    enabled: true
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 0
+    periodSeconds: 15
+    timeoutSeconds: 10
+    failureThreshold: 40  # Allow 10 minutes for startup
+
+  # Environment variables for container
+  env:
+    - name: MYSQL_HOST
+      value: "misp-mariadb"
+    - name: MYSQL_DATABASE
+      value: "misp"
+    - name: MYSQL_USER
+      value: "misp"
+    - name: MYSQL_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: misp-mariadb
+          key: mariadb-password
+    - name: REDIS_HOST
+      value: "misp-redis-master"
+    - name: MISP_BASEURL
+      value: "http://rhostesk8s001.labwi.sva.de"
+    - name: MISP_ADMIN_EMAIL
+      value: "admin@misp.local"
+    - name: MISP_ADMIN_PASSWORD
+      value: "admin123"
+    - name: MISP_ORG_NAME
+      value: "On-Premises Organization"
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+  annotations: {}
+
+# Ingress configuration - Updated for your hostname
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+  hosts:
+    - host: rhostesk8s001.labwi.sva.de
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Redis configuration
+redis:
+  enabled: true
+  auth:
+    enabled: false  # Simplified for on-premises testing
+  master:
+    persistence:
+      enabled: true
+      storageClass: "longhorn"
+      size: 2Gi  # Increased for on-premises
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "200m"
+
+# MariaDB configuration
+mariadb:
+  enabled: true
+  auth:
+    rootPassword: "rootpassword123"
+    username: "misp"
+    password: "misppassword123"
+    database: "misp"
+  primary:
+    persistence:
+      enabled: true
+      storageClass: "longhorn"
+      size: 5Gi  # Increased for on-premises
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "200m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+
+# Node selector and affinity (run on control plane if needed)
+nodeSelector: {}
+  # node-role.kubernetes.io/control-plane: "true"
+
+# Allow scheduling on control plane if needed
+tolerations: []
+  # - key: "node-role.kubernetes.io/control-plane"
+  #   operator: "Exists"
+  #   effect: "NoSchedule"
+
+affinity: {}
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod labels
+podLabels: {}
+
+# Network Policy (disabled for testing)
+networkPolicy:
+  enabled: false
+
+# Autoscaling (disabled for on-premises testing)
+autoscaling:
+  enabled: false
+
+# Init containers
+initContainers:
+  # Wait for dependencies
+  waitForDependencies:
+    enabled: true
+    image:
+      repository: busybox
+      tag: "1.36"
+      pullPolicy: IfNotPresent

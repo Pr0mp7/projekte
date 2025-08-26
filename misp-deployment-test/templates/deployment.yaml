@@ -82,6 +82,9 @@ spec:
               protocol: TCP
           env:
             {{- include "misp-test.mispEnvVars" . | nindent 12 }}
+            {{- if .Values.misp.env }}
+            {{- toYaml .Values.misp.env | nindent 12 }}
+            {{- end }}
           {{- if .Values.misp.livenessProbe.enabled }}
           livenessProbe:
             httpGet:

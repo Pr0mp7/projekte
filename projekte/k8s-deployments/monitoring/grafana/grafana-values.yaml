@@ -1,0 +1,29 @@
+---
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  labels: {}
+  # annotations:
+  #   cert-manager.io/cluster-issuer: letsencrypt-prod
+  path: /
+  pathType: Prefix
+  hosts:
+    - grafana.idp.kubermatic.sva.dev
+  tls:
+    - secretName: grafana.idp.kubermatic.sva.dev-tls
+      hosts:
+        - grafana.idp.kubermatic.sva.dev
+ 
+initChownData:
+  enabled: false
+ 
+persistence:
+  enabled: true
+  storageClassName: longhorn
+  accessModes:
+    - ReadWriteOnce
+  size: 1Gi
+  finalizers:
+    - kubernetes.io/pvc-protection
+  extraPvcLabels: {}
+  disableWarning: false

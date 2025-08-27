@@ -241,12 +241,36 @@ networkPolicy:
 autoscaling:
   enabled: false
 
-# Init containers
-initContainers:
-  # Wait for dependencies
-  waitForDependencies:
-    enabled: true
-    image:
-      repository: busybox
-      tag: "1.36"
-      pullPolicy: IfNotPresent
+  # Init containers to fix permissions
+  initContainers:
+    # Wait for dependencies (keep your existing one)
+    waitForDependencies:
+      enabled: true
+      image:
+        repository: busybox
+        tag: "1.36"
+        pullPolicy: IfNotPresent
+    
+    # Add permission fix container
+    fixPermissions:
+      enabled: true
+      image:
+        repository: busybox
+        tag: "1.36"
+        pullPolicy: IfNotPresent
+      command: 
+        - /bin/sh
+        - -c
+        - |
+          echo "Fixing MISP file permissions..."
+          chown -R 33:33 /var/www/MISP/app/Config || true
+          chown -R 33:33 /var/www/MISP/app/tmp || true
+          chown -R 33:33 /var/www/MISP/app/files || true
+          chmod -R 755 /var/www/MISP/app/Config || true
+          echo "Permission fix completed"
+      securityContext:
+        runAsUser: 0  # Run as root to change ownership
+        runAsNonRoot: false
+      volumeMounts:
+        - name: misp-data
+          mountPath: /var/www/MISP

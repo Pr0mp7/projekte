@@ -1,0 +1,45 @@
+config:
+  # scrape_configs: []  # Disable all default jobs
+
+  # snippets:
+  #   disable_kubernetes_pod_scrape: true  # <-- This disables the built-in 'kubernetes-pods'
+
+  #   pipelineStages:
+  #     - docker: {}  # Parse Docker log format, optional
+  #   extraScrapeConfigs: |
+  #     - job_name: kubernetes-pods
+  #       kubernetes_sd_configs:
+  #         - role: pod
+  #       relabel_configs:
+  #         - source_labels: [__meta_kubernetes_pod_label_name]
+  #           target_label: job
+  #         - source_labels: [__meta_kubernetes_namespace]
+  #           target_label: namespace
+  #         - source_labels: [__meta_kubernetes_pod_name]
+  #           target_label: pod
+  #         - source_labels: [__meta_kubernetes_container_name]
+  #           target_label: container
+  #         - action: replace
+  #           replacement: /var/log/pods/*/*/*.log
+  #           target_label: __path__
+
+  clients:
+    - url: http://loki.observability.svc.cluster.local:3100/loki/api/v1/push
+      tenant_id: "default"
+  positions:
+    filename: /var/log/positions.yaml
+
+podLabels:
+  app: promtail
+
+tolerations:
+  - key: "node-role.kubernetes.io/control-plane"
+    operator: "Exists"
+    effect: "NoSchedule"
+
+rbac:
+  create: true
+serviceAccount:
+  create: true
+  name: promtail
+ 

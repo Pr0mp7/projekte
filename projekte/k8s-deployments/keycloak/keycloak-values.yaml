@@ -1,0 +1,31 @@
+auth:
+  adminPassword: Hallo123
+  adminUser: admin
+extraEnvVars:
+- name: KEYCLOAK_LOG_LEVEL
+  value: DEBUG
+- name: KEYCLOAK_EXTRA_ARGS
+  value: --import-realm
+global:
+  defaultStorageClass: standard
+  storageClass: standard
+ingress:
+  annotations:
+    cert-manager.io/cluster-issuer: selfsigned
+  enabled: true
+  extraTls:
+  - hosts:
+    - keycloak.172.18.0.4.nip.io
+    secretName: keycloak.172.18.0.4.nip.io-tls
+  hostname: keycloak.172.18.0.4.nip.io
+  ingressClassName: nginx
+  path: /
+  pathType: Prefix
+  tls: false
+proxy: edge
+service:
+  type: ClusterIP
+startupProbe:
+  enabled: true
+  failureThreshold: 30
+  periodSeconds: 10

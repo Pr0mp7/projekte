@@ -1,0 +1,175 @@
+# MISP Docker Image for On-Premises Deployment
+# Based on CentOS Stream 9 (alternative to RHEL UBI)
+# Optimized for environments with network restrictions
+
+FROM quay.io/centos/centos:stream9 as base
+
+# Build arguments
+ARG MISP_BRANCH=v2.4.190
+ARG MISP_TAG=v2.4.190
+ARG PHP_VER=8.1
+ARG PYPI_REDIS_VERSION=5.0.1
+ARG PYPI_LIEF_VERSION=0.14.1
+ARG PYPI_PYDEEP2_VERSION=0.5.1
+ARG PYPI_PYTHON_MAGIC_VERSION=0.4.27
+ARG PYPI_MISP_LIB_STIX2_VERSION=3.0.1
+
+# Set environment variables
+ENV TZ=Etc/UTC
+ENV MISP_BRANCH=${MISP_BRANCH}
+ENV MISP_TAG=${MISP_TAG}
+
+# Install packages and dependencies
+USER root
+RUN dnf update -y && \
+    dnf install -y epel-release && \
+    dnf config-manager --set-enabled crb && \
+    dnf install -y \
+    # System utilities
+    wget curl git unzip vim procps-ng which \
+    # Web server
+    httpd httpd-tools \
+    # PHP and extensions
+    php php-cli php-fpm php-common php-xml php-mbstring \
+    php-pdo php-mysqlnd php-zip php-gd php-opcache \
+    php-json php-intl php-bcmath php-ldap \
+    # Python
+    python3 python3-pip python3-devel \
+    # Build tools
+    gcc gcc-c++ make cmake autoconf automake libtool \
+    # Libraries
+    openssl-devel libxml2-devel libcurl-devel \
+    zlib-devel libpng-devel libjpeg-turbo-devel \
+    freetype-devel oniguruma-devel \
+    # Database client
+    mariadb mysql \
+    # System services
+    sudo cronie logrotate rsyslog supervisor \
+    # Additional dependencies for MISP
+    ssdeep-devel ssdeep-libs python3-ssdeep \
+    libffi-devel sqlite-devel && \
+    dnf clean all
+
+# Install additional PHP extensions via PECL if needed
+RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && \
+    php composer-setup.php --install-dir=/usr/local/bin --filename=composer && \
+    php -r "unlink('composer-setup.php');"
+
+# Create MISP user and directories
+RUN groupadd -r www-data && \
+    useradd -r -g www-data -s /bin/bash -d /var/www/MISP -c "MISP User" www-data && \
+    mkdir -p /var/www/MISP && \
+    chown -R www-data:www-data /var/www/MISP
+
+# Python build stage
+FROM base as python-build
+
+WORKDIR /tmp
+RUN git clone --depth 1 --branch ${MISP_BRANCH} https://github.com/MISP/MISP.git MISP-${MISP_BRANCH}
+
+# Install Python dependencies
+RUN cd MISP-${MISP_BRANCH} && \
+    python3 -m pip install --upgrade pip setuptools wheel && \
+    python3 -m pip install \
+    redis==${PYPI_REDIS_VERSION} \
+    lief==${PYPI_LIEF_VERSION} \
+    pydeep2==${PYPI_PYDEEP2_VERSION} \
+    python-magic==${PYPI_PYTHON_MAGIC_VERSION} \
+    misp-lib-stix2==${PYPI_MISP_LIB_STIX2_VERSION} \
+    stix2-patterns \
+    maec \
+    mixbox \
+    cybox \
+    pyzmq \
+    redis \
+    python-dateutil && \
+    if [ -f requirements.txt ]; then python3 -m pip install -r requirements.txt; fi
+
+# MISP application stage
+FROM base as misp-app
+
+# Copy MISP source
+COPY --from=python-build /tmp/MISP-${MISP_BRANCH} /var/www/MISP
+COPY --from=python-build /usr/local/lib/python3*/site-packages /usr/local/lib/python3.9/site-packages
+
+WORKDIR /var/www/MISP
+
+# Set proper permissions
+RUN chown -R www-data:www-data /var/www/MISP && \
+    chmod -R 755 /var/www/MISP
+
+# Install PHP dependencies with Composer
+USER www-data
+RUN if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader --no-interaction; fi
+
+USER root
+
+# Configure PHP
+RUN cp /etc/php.ini /etc/php.ini.bak && \
+    sed -i 's/max_execution_time = 30/max_execution_time = 300/' /etc/php.ini && \
+    sed -i 's/memory_limit = 128M/memory_limit = 2048M/' /etc/php.ini && \
+    sed -i 's/upload_max_filesize = 2M/upload_max_filesize = 50M/' /etc/php.ini && \
+    sed -i 's/post_max_size = 8M/post_max_size = 50M/' /etc/php.ini && \
+    sed -i 's/max_input_time = 60/max_input_time = 300/' /etc/php.ini && \
+    sed -i 's/session.cookie_secure =/session.cookie_secure = 0/' /etc/php.ini && \
+    sed -i 's/;date.timezone =/date.timezone = UTC/' /etc/php.ini
+
+# Configure Apache
+COPY docker/apache-misp.conf /etc/httpd/conf.d/misp.conf
+RUN sed -i 's/#ServerName www.example.com:80/ServerName localhost:80/' /etc/httpd/conf/httpd.conf && \
+    sed -i 's/DirectoryIndex index.html/DirectoryIndex index.php index.html/' /etc/httpd/conf/httpd.conf && \
+    sed -i 's/User apache/User www-data/' /etc/httpd/conf/httpd.conf && \
+    sed -i 's/Group apache/Group www-data/' /etc/httpd/conf/httpd.conf
+
+# Create required directories
+RUN mkdir -p /var/www/MISP/app/tmp/logs && \
+    mkdir -p /var/www/MISP/app/files && \
+    mkdir -p /var/www/MISP/app/files/scripts/tmp && \
+    mkdir -p /var/www/MISP/app/Config && \
+    chmod -R 775 /var/www/MISP/app/tmp && \
+    chmod -R 775 /var/www/MISP/app/files && \
+    chown -R www-data:www-data /var/www/MISP/app/tmp && \
+    chown -R www-data:www-data /var/www/MISP/app/files && \
+    chown -R www-data:www-data /var/www/MISP/app/Config
+
+# Copy configuration files
+COPY docker/entrypoint.sh /entrypoint.sh
+COPY docker/supervisord.conf /etc/supervisord.conf
+RUN chmod +x /entrypoint.sh
+
+# Create MISP configuration files if they don't exist
+RUN if [ -f /var/www/MISP/app/Config/bootstrap.default.php ]; then \
+      cp /var/www/MISP/app/Config/bootstrap.default.php /var/www/MISP/app/Config/bootstrap.php; \
+    fi && \
+    if [ -f /var/www/MISP/app/Config/database.default.php ]; then \
+      cp /var/www/MISP/app/Config/database.default.php /var/www/MISP/app/Config/database.php; \
+    fi && \
+    if [ -f /var/www/MISP/app/Config/core.default.php ]; then \
+      cp /var/www/MISP/app/Config/core.default.php /var/www/MISP/app/Config/core.php; \
+    fi && \
+    if [ -f /var/www/MISP/app/Config/config.default.php ]; then \
+      cp /var/www/MISP/app/Config/config.default.php /var/www/MISP/app/Config/config.php; \
+    fi && \
+    chown -R www-data:www-data /var/www/MISP/app/Config/
+
+# Install MISP modules (optional)
+RUN cd /opt && \
+    git clone --depth 1 https://github.com/MISP/misp-modules.git && \
+    cd misp-modules && \
+    python3 -m pip install -I -r REQUIREMENTS && \
+    python3 -m pip install -I . && \
+    chown -R www-data:www-data /opt/misp-modules
+
+# Create systemd-like service files for supervisor
+RUN mkdir -p /etc/supervisord.d
+
+# Expose port
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
+    CMD curl -f http://localhost/ || exit 1
+
+# Set entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]

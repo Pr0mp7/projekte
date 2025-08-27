@@ -1,0 +1,42 @@
+# DFIR-IRIS Image-Versionen für RKE2 Deployment
+ingress:
+  hosts:
+    - host: rhostesk8s001.labwi.sva.de
+      paths:
+        - path: /(.*)
+          pathType: ImplementationSpecific
+          serivceName: iriswebapp-app
+          servicePort: 8000
+
+
+image:
+  # Haupt-Anwendung
+  app:
+    repository: ghcr.io/dfir-iris/iriswebapp_app
+    tag: v2.4.21  # Neueste stabile Version
+    pullPolicy: IfNotPresent
+
+  # Worker Service (verwendet dasselbe Image wie app)
+  worker:
+    repository: ghcr.io/dfir-iris/iriswebapp_app
+    tag: v2.4.21
+    pullPolicy: IfNotPresent
+
+  # Datenbank
+  db:
+    repository: ghcr.io/dfir-iris/iriswebapp_db
+    tag: v2.4.21
+    pullPolicy: IfNotPresent
+
+  # Nginx Reverse Proxy
+  nginx:
+    repository: ghcr.io/dfir-iris/iriswebapp_nginx
+    tag: v2.4.21
+    pullPolicy: IfNotPresent
+
+  # RabbitMQ Message Broker
+  rabbitmq:
+    repository: rabbitmq
+    tag: 3-management
+    pullPolicy: IfNotPresent
+

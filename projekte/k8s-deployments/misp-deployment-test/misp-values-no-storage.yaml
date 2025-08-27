@@ -1,0 +1,115 @@
+# MISP Values - No Persistent Storage (Testing Only)
+# Use this for quick testing when storage issues persist
+
+# Global configuration
+global:
+  imagePullSecrets: []
+
+# MISP Configuration
+misp:
+  replicaCount: 1
+  
+  image:
+    repository: localhost:5000/misp
+    pullPolicy: IfNotPresent
+    tag: "latest"
+
+  serviceAccount:
+    create: true
+
+  # DISABLE PERSISTENCE FOR TESTING
+  persistence:
+    enabled: false
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+
+  # Environment variables
+  env:
+    - name: MYSQL_HOST
+      value: "misp-mariadb"
+    - name: MYSQL_DATABASE
+      value: "misp"
+    - name: MYSQL_USER
+      value: "misp"
+    - name: MYSQL_PASSWORD
+      value: "misppassword123"
+    - name: MISP_BASEURL
+      value: "http://rhostesk8s001.labwi.sva.de"
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+  hosts:
+    - host: rhostesk8s001.labwi.sva.de
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Redis - NO PERSISTENCE
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  architecture: standalone
+  master:
+    persistence:
+      enabled: false  # NO STORAGE
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "50m"
+  replica:
+    replicaCount: 0
+  sentinel:
+    enabled: false
+
+# MariaDB - NO PERSISTENCE
+mariadb:
+  enabled: true
+  auth:
+    rootPassword: "rootpassword123"
+    username: "misp"
+    password: "misppassword123"
+    database: "misp"
+  architecture: standalone
+  primary:
+    persistence:
+      enabled: false  # NO STORAGE
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+  secondary:
+    replicaCount: 0
+
+# Control plane scheduling
+nodeSelector:
+  node-role.kubernetes.io/control-plane: "true"
+
+tolerations:
+  - key: "node-role.kubernetes.io/control-plane"
+    operator: "Exists"
+    effect: "NoSchedule"
+
+# Disable features that need storage
+networkPolicy:
+  enabled: false
+autoscaling:
+  enabled: false

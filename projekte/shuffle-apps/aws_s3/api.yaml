@@ -1,0 +1,391 @@
+app_version: 1.0.0
+name: AWS S3
+description: AWS S3 and MinIO compatible storage operations
+tags:
+  - Storage
+  - AWS
+  - MinIO
+  - S3
+categories:
+  - Storage
+contact_info:
+  name: "@shuffle"
+  url: https://shuffler.io
+  email: support@shuffler.io
+authentication:
+  required: false
+  parameters: []
+docker_version: 1.0.0
+actions:
+  - name: list_buckets
+    description: List all S3 buckets
+    node_type: action
+    parameters:
+      - name: access_key
+        description: AWS/MinIO Access Key
+        required: true
+        multiline: false
+        example: "AKIAIOSFODNN7EXAMPLE"
+        schema:
+          type: string
+      - name: secret_key
+        description: AWS/MinIO Secret Key
+        required: true
+        multiline: false
+        example: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+        schema:
+          type: string
+      - name: region
+        description: AWS Region (use us-east-1 for MinIO)
+        required: true
+        multiline: false
+        example: "us-east-1"
+        schema:
+          type: string
+      - name: endpoint_url
+        description: Custom endpoint URL (for MinIO - e.g. http://minio:9000)
+        required: false
+        multiline: false
+        example: "http://minio:9000"
+        schema:
+          type: string
+    returns:
+      schema:
+        type: string
+  
+  - name: create_bucket
+    description: Create a new S3 bucket
+    node_type: action
+    parameters:
+      - name: access_key
+        description: AWS/MinIO Access Key
+        required: true
+        schema:
+          type: string
+      - name: secret_key
+        description: AWS/MinIO Secret Key
+        required: true
+        schema:
+          type: string
+      - name: region
+        description: AWS Region
+        required: true
+        example: "us-east-1"
+        schema:
+          type: string
+      - name: bucket_name
+        description: Name of the bucket to create
+        required: true
+        example: "my-bucket"
+        schema:
+          type: string
+      - name: access_type
+        description: Bucket ACL
+        required: true
+        example: "private"
+        schema:
+          type: string
+      - name: endpoint_url
+        description: Custom endpoint URL (for MinIO)
+        required: false
+        schema:
+          type: string
+    returns:
+      schema:
+        type: string
+  
+  - name: upload_file_to_bucket
+    description: Upload a file to S3 bucket
+    node_type: action
+    parameters:
+      - name: access_key
+        description: AWS/MinIO Access Key
+        required: true
+        schema:
+          type: string
+      - name: secret_key
+        description: AWS/MinIO Secret Key
+        required: true
+        schema:
+          type: string
+      - name: region
+        description: AWS Region
+        required: true
+        schema:
+          type: string
+      - name: bucket_name
+        description: Target bucket name
+        required: true
+        example: "my-bucket"
+        schema:
+          type: string
+      - name: bucket_path
+        description: Path/key in bucket
+        required: true
+        example: "folder/file.txt"
+        schema:
+          type: string
+      - name: file_id
+        description: Shuffle file ID to upload
+        required: true
+        example: "$file_id"
+        schema:
+          type: string
+      - name: endpoint_url
+        description: Custom endpoint URL (for MinIO)
+        required: false
+        schema:
+          type: string
+    returns:
+      schema:
+        type: string
+  
+  - name: download_file_from_bucket
+    description: Download a file from S3 bucket
+    node_type: action
+    parameters:
+      - name: access_key
+        description: AWS/MinIO Access Key
+        required: true
+        schema:
+          type: string
+      - name: secret_key
+        description: AWS/MinIO Secret Key
+        required: true
+        schema:
+          type: string
+      - name: region
+        description: AWS Region
+        required: true
+        schema:
+          type: string
+      - name: bucket_name
+        description: Source bucket name
+        required: true
+        schema:
+          type: string
+      - name: filename
+        description: File path/key in bucket
+        required: true
+        example: "folder/file.txt"
+        schema:
+          type: string
+      - name: endpoint_url
+        description: Custom endpoint URL (for MinIO)
+        required: false
+        schema:
+          type: string
+    returns:
+      schema:
+        type: string
+  
+  - name: delete_file_from_bucket
+    description: Delete a file from S3 bucket
+    node_type: action
+    parameters:
+      - name: access_key
+        description: AWS/MinIO Access Key
+        required: true
+        schema:
+          type: string
+      - name: secret_key
+        description: AWS/MinIO Secret Key
+        required: true
+        schema:
+          type: string
+      - name: region
+        description: AWS Region
+        required: true
+        schema:
+          type: string
+      - name: bucket_name
+        description: Bucket name
+        required: true
+        schema:
+          type: string
+      - name: bucket_path
+        description: File path/key to delete
+        required: true
+        schema:
+          type: string
+      - name: endpoint_url
+        description: Custom endpoint URL (for MinIO)
+        required: false
+        schema:
+          type: string
+    returns:
+      schema:
+        type: string
+
+  - name: block_ip_access
+    description: Block IP access to bucket (AWS only, not MinIO)
+    node_type: action
+    parameters:
+      - name: access_key
+        description: AWS Access Key
+        required: true
+        schema:
+          type: string
+      - name: secret_key
+        description: AWS Secret Key
+        required: true
+        schema:
+          type: string
+      - name: region
+        description: AWS Region
+        required: true
+        schema:
+          type: string
+      - name: bucket_name
+        description: Bucket name
+        required: true
+        schema:
+          type: string
+      - name: ip
+        description: IP address to block
+        required: true
+        example: "192.168.1.100"
+        schema:
+          type: string
+      - name: endpoint_url
+        description: Custom endpoint URL
+        required: false
+        schema:
+          type: string
+    returns:
+      schema:
+        type: string
+
+  - name: bucket_logging
+    description: Get bucket logging configuration
+    node_type: action
+    parameters:
+      - name: access_key
+        description: AWS/MinIO Access Key
+        required: true
+        schema:
+          type: string
+      - name: secret_key
+        description: AWS/MinIO Secret Key
+        required: true
+        schema:
+          type: string
+      - name: region
+        description: AWS Region
+        required: true
+        schema:
+          type: string
+      - name: bucket_name
+        description: Bucket name
+        required: true
+        schema:
+          type: string
+      - name: endpoint_url
+        description: Custom endpoint URL (for MinIO)
+        required: false
+        schema:
+          type: string
+    returns:
+      schema:
+        type: string
+
+  - name: bucket_policy_status
+    description: Get bucket policy status
+    node_type: action
+    parameters:
+      - name: access_key
+        description: AWS/MinIO Access Key
+        required: true
+        schema:
+          type: string
+      - name: secret_key
+        description: AWS/MinIO Secret Key
+        required: true
+        schema:
+          type: string
+      - name: region
+        description: AWS Region
+        required: true
+        schema:
+          type: string
+      - name: bucket_name
+        description: Bucket name
+        required: true
+        schema:
+          type: string
+      - name: endpoint_url
+        description: Custom endpoint URL (for MinIO)
+        required: false
+        schema:
+          type: string
+    returns:
+      schema:
+        type: string
+
+  - name: bucket_replication
+    description: Get bucket replication configuration
+    node_type: action
+    parameters:
+      - name: access_key
+        description: AWS/MinIO Access Key
+        required: true
+        schema:
+          type: string
+      - name: secret_key
+        description: AWS/MinIO Secret Key
+        required: true
+        schema:
+          type: string
+      - name: region
+        description: AWS Region
+        required: true
+        schema:
+          type: string
+      - name: bucket_name
+        description: Bucket name
+        required: true
+        schema:
+          type: string
+      - name: endpoint_url
+        description: Custom endpoint URL (for MinIO)
+        required: false
+        schema:
+          type: string
+    returns:
+      schema:
+        type: string
+
+  - name: bucket_request_payment
+    description: Get bucket request payment configuration
+    node_type: action
+    parameters:
+      - name: access_key
+        description: AWS/MinIO Access Key
+        required: true
+        schema:
+          type: string
+      - name: secret_key
+        description: AWS/MinIO Secret Key
+        required: true
+        schema:
+          type: string
+      - name: region
+        description: AWS Region
+        required: true
+        schema:
+          type: string
+      - name: bucket_name
+        description: Bucket name
+        required: true
+        schema:
+          type: string
+      - name: endpoint_url
+        description: Custom endpoint URL (for MinIO)
+        required: false
+        schema:
+          type: string
+    returns:
+      schema:
+        type: string
+
+large_image: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==

@@ -1,0 +1,31 @@
+# Test Dockerfile - Just get something working
+FROM php:8.2-apache
+
+# Minimal setup
+RUN apt-get update && apt-get install -y \
+    git \
+    wget \
+    && apt-get clean
+
+# Just install PDO MySQL (essential for database)
+RUN docker-php-ext-install pdo_mysql
+
+# Copy Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Get MISP source
+WORKDIR /var/www/html
+RUN git clone --depth 1 --branch v2.4.190 https://github.com/MISP/MISP.git . \
+    && chown -R www-data:www-data /var/www/html
+
+# Basic PHP settings
+RUN echo "memory_limit = 512M" > /usr/local/etc/php/conf.d/misp.ini
+
+# Apache config
+RUN a2enmod rewrite && echo "ServerName localhost" >> /etc/apache2/apache2.conf
+
+# Create basic test page
+RUN echo '<?php echo "<h1>MISP Test Container Works!</h1>"; phpinfo(); ?>' > /var/www/html/test.php
+
+EXPOSE 80
+CMD ["apache2-foreground"]

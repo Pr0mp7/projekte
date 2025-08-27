@@ -1,0 +1,207 @@
+# MISP Test Deployment Values
+# Lightweight configuration for RKE2 testing environment
+
+# Global configuration
+global:
+  # Image pull secrets for private registries (if needed)
+  imagePullSecrets: []
+    # - name: registry-secret
+
+# MISP Configuration
+misp:
+  # Number of replicas (keep low for testing)
+  replicaCount: 1
+
+  # Container image settings
+  image:
+    repository: registry.gitlab.com/jupiter8595746/container-images/misp
+    pullPolicy: IfNotPresent
+    tag: "2.4.214"
+
+  # Service account
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {}
+
+  # MISP environment configuration
+  config:
+    # Basic MISP settings
+    admin:
+      email: admin@misp.local
+      password: "admin123"  # Change for production
+      orgName: "Test Organization"
+    
+    # Site settings
+    baseUrl: "http://misp.local"
+    
+    # Security settings (relaxed for testing)
+    security:
+      saltKey: "test-salt-key-change-me"
+      enableCSP: false
+      disableSSLRedirect: true
+    
+    # Worker settings (minimal for testing)
+    workers:
+      default: 1
+      prio: 1
+      email: 1
+
+  # Resource limits (minimal for testing)
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "200m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+  # Persistence settings
+  persistence:
+    enabled: true
+    storageClass: "longhorn"  # Use Longhorn consistently
+    accessMode: ReadWriteOnce
+    size: 5Gi
+
+  # Security context (pod-level)
+  securityContext:
+    runAsUser: 33
+    runAsGroup: 33
+    fsGroup: 33
+    runAsNonRoot: true
+
+  # Container security context
+  containerSecurityContext:
+    runAsUser: 33
+    runAsGroup: 33
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false  # Simplified for testing
+    capabilities:
+      drop:
+        - ALL
+
+  # Probes (simplified)
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: /
+      port: 8080
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: true
+    httpGet:
+      path: /
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  startupProbe:
+    enabled: true
+    httpGet:
+      path: /
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+  annotations: {}
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+  hosts:
+    - host: misp.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - secretName: misp-tls
+    #   hosts:
+    #     - misp.local
+
+# Redis configuration (simplified)
+redis:
+  enabled: true
+  auth:
+    enabled: false  # Simplified for testing
+  master:
+    persistence:
+      enabled: true  # Enable persistence to match other components
+      storageClass: "longhorn"  # Use Longhorn consistently
+      size: 1Gi
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "50m"
+      limits:
+        memory: "128Mi"
+        cpu: "100m"
+
+# MariaDB configuration (simplified)
+mariadb:
+  enabled: true
+  auth:
+    rootPassword: "rootpassword"
+    username: "misp"
+    password: "misppassword"
+    database: "misp"
+  primary:
+    persistence:
+      enabled: true
+      storageClass: "longhorn"  # Use Longhorn like Redis
+      size: 2Gi
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+
+# Node selector and affinity (optional)
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod labels
+podLabels: {}
+
+# Network Policy (disabled for testing)
+networkPolicy:
+  enabled: false
+
+# Autoscaling (disabled for testing)
+autoscaling:
+  enabled: false
+
+# Init containers
+initContainers:
+  # Wait for dependencies
+  waitForDependencies:
+    enabled: true
+    image:
+      repository: busybox
+      tag: "1.35"
+      pullPolicy: IfNotPresent

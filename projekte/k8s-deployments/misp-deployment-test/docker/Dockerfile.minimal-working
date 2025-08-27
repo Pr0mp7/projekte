@@ -1,0 +1,68 @@
+# Ultra-minimal working MISP Dockerfile
+# Avoids complex PHP extension compilation
+
+FROM php:8.2-apache
+
+# Set environment
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install only essential system packages and pre-built PHP extensions
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    wget \
+    curl \
+    unzip \
+    default-mysql-client \
+    netcat-openbsd \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install only essential PHP extensions (avoid problematic ones)
+RUN docker-php-ext-install pdo_mysql
+
+# Copy Composer from official image
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Create www-data user directories
+RUN mkdir -p /var/www/html \
+    && chown -R www-data:www-data /var/www/html
+
+# Download MISP source
+WORKDIR /var/www/html
+RUN git clone --depth 1 --branch v2.4.190 https://github.com/MISP/MISP.git . \
+    && chown -R www-data:www-data /var/www/html \
+    && rm -rf .git
+
+# Skip Composer for now to avoid issues
+# RUN composer install --no-dev --no-interaction || echo "Skipping composer"
+
+# Basic PHP configuration
+RUN echo "memory_limit = 512M" > /usr/local/etc/php/conf.d/misp.ini \
+    && echo "max_execution_time = 300" >> /usr/local/etc/php/conf.d/misp.ini \
+    && echo "upload_max_filesize = 50M" >> /usr/local/etc/php/conf.d/misp.ini \
+    && echo "post_max_size = 50M" >> /usr/local/etc/php/conf.d/misp.ini
+
+# Configure Apache
+RUN a2enmod rewrite \
+    && echo "ServerName localhost" >> /etc/apache2/apache2.conf
+
+# Create MISP directories
+RUN mkdir -p \
+    /var/www/html/app/tmp/logs \
+    /var/www/html/app/files \
+    /var/www/html/app/Config \
+    && chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html
+
+# Copy entrypoint
+COPY docker/entrypoint-minimal-working.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 80
+
+# Simple healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s \
+    CMD curl -f http://localhost/ || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["apache2-foreground"]

@@ -1,0 +1,116 @@
+# MISP Minimal Docker Image
+# For environments with severe network restrictions
+# Uses Ubuntu base with minimal dependencies
+
+FROM ubuntu:22.04
+
+# Build arguments
+ARG MISP_BRANCH=v2.4.190
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Set environment variables
+ENV TZ=UTC
+ENV MISP_BRANCH=${MISP_BRANCH}
+
+# Basic system setup
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    # Essential tools
+    ca-certificates wget curl git unzip vim \
+    # Web server
+    apache2 apache2-utils \
+    # PHP 8.1 (Ubuntu 22.04 default)
+    php php-cli php-fpm php-apache2 \
+    php-mysql php-xml php-mbstring php-zip \
+    php-gd php-json php-curl php-intl \
+    php-bcmath php-ldap php-redis \
+    # Python
+    python3 python3-pip python3-dev \
+    # Build tools
+    build-essential cmake \
+    # System tools
+    sudo cron supervisor \
+    # Database client
+    mysql-client \
+    # Clean up
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Create MISP user
+RUN useradd -r -s /bin/bash -d /var/www/MISP -c "MISP User" www-data || true
+
+# Download MISP
+WORKDIR /var/www
+RUN git clone --depth 1 --branch ${MISP_BRANCH} https://github.com/MISP/MISP.git MISP
+
+# Set permissions
+RUN chown -R www-data:www-data /var/www/MISP && \
+    chmod -R 755 /var/www/MISP
+
+# Install basic Python dependencies
+RUN python3 -m pip install --no-cache-dir --upgrade pip && \
+    python3 -m pip install --no-cache-dir \
+    redis python-dateutil requests
+
+# Install PHP dependencies
+WORKDIR /var/www/MISP
+RUN if [ -f composer.json ]; then \
+        sudo -u www-data composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs || true; \
+    fi
+
+# Configure PHP
+RUN sed -i 's/max_execution_time = 30/max_execution_time = 300/' /etc/php/8.1/apache2/php.ini && \
+    sed -i 's/memory_limit = 128M/memory_limit = 1024M/' /etc/php/8.1/apache2/php.ini && \
+    sed -i 's/upload_max_filesize = 2M/upload_max_filesize = 50M/' /etc/php/8.1/apache2/php.ini && \
+    sed -i 's/post_max_size = 8M/post_max_size = 50M/' /etc/php/8.1/apache2/php.ini
+
+# Configure Apache
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf && \
+    a2enmod rewrite headers && \
+    a2ensite 000-default
+
+# Create Apache virtual host
+RUN cat > /etc/apache2/sites-available/misp.conf << 'EOF'
+<VirtualHost *:80>
+    ServerName localhost
+    DocumentRoot /var/www/MISP/app/webroot
+    
+    <Directory /var/www/MISP/app/webroot>
+        Options -Indexes
+        AllowOverride All
+        Require all granted
+    </Directory>
+    
+    ErrorLog ${APACHE_LOG_DIR}/misp_error.log
+    CustomLog ${APACHE_LOG_DIR}/misp_access.log combined
+</VirtualHost>
+EOF
+
+RUN a2ensite misp && a2dissite 000-default
+
+# Create directories
+RUN mkdir -p /var/www/MISP/app/tmp/logs \
+             /var/www/MISP/app/files \
+             /var/www/MISP/app/Config && \
+    chown -R www-data:www-data /var/www/MISP/app/tmp \
+                               /var/www/MISP/app/files \
+                               /var/www/MISP/app/Config
+
+# Copy configuration files
+COPY docker/entrypoint-minimal.sh /entrypoint.sh
+COPY docker/supervisord-minimal.conf /etc/supervisor/conf.d/misp.conf
+RUN chmod +x /entrypoint.sh
+
+# Expose port
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
+    CMD curl -f http://localhost/ || exit 1
+
+# Set entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/usr/bin/supervisord", "-n"]

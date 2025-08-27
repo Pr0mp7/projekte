@@ -1,0 +1,35 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: build-push-image-buildah2
+spec:
+  pipelineRef:
+    name: buildah-pipeline
+  podTemplate:
+    securityContext:
+      fsGroup: 65532
+  workspaces:
+    - name: shared-data
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+    - name: basic-auth
+      secret:
+        secretName: bibi-basic-auth
+    - name: dockerconfig
+      secret:
+        secretName: idp
+  params:
+    - name: git-url
+      value: http://gitea.gitea.svc.cluster.local/bn_user/python-app.git
+      #value: https://sina.tiab.labda.sva.de/bn_user/python-app.git
+    - name: branch-name
+      value: main
+    - name: verify-ssl
+      value: "false"
+    - name: image-name
+      value: "harbor.idp.kubermatic.sva.dev/python-app/my-python-app:tekton"

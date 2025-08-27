@@ -1,0 +1,97 @@
+# Simple MISP Dockerfile using official PHP image
+# Designed to work with --network host builds
+
+FROM php:8.2-apache
+
+# Set environment
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install required PHP extensions and system packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Essential packages
+    git wget curl unzip vim \
+    # PHP extension dependencies
+    libpng-dev libjpeg-dev libfreetype6-dev \
+    libzip-dev libxml2-dev libonig-dev \
+    libcurl4-openssl-dev libssl-dev \
+    # System utilities
+    default-mysql-client supervisor netcat-openbsd \
+    # Clean up
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+    pdo_mysql \
+    zip \
+    gd \
+    xml \
+    mbstring \
+    curl \
+    json \
+    bcmath \
+    intl \
+    opcache
+
+# Install Composer (using copy from official image to avoid curl issues)
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Download MISP source
+WORKDIR /var/www/html
+RUN git clone --depth 1 --branch v2.4.190 https://github.com/MISP/MISP.git . \
+    && rm -rf .git
+
+# Install PHP dependencies with error handling
+RUN composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs || \
+    echo "Composer install failed, continuing with basic setup"
+
+# Configure PHP for MISP
+RUN { \
+    echo 'max_execution_time = 300'; \
+    echo 'memory_limit = 1024M'; \
+    echo 'upload_max_filesize = 50M'; \
+    echo 'post_max_size = 50M'; \
+    echo 'max_input_time = 300'; \
+    echo 'session.cookie_secure = 0'; \
+    echo 'date.timezone = UTC'; \
+} > /usr/local/etc/php/conf.d/misp.ini
+
+# Configure Apache
+RUN a2enmod rewrite headers \
+    && echo "ServerName localhost" >> /etc/apache2/apache2.conf
+
+# Create MISP directories
+RUN mkdir -p \
+    app/tmp/logs \
+    app/files \
+    app/Config \
+    && chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html
+
+# Create basic MISP configuration files
+RUN if [ -f app/Config/bootstrap.default.php ]; then \
+        cp app/Config/bootstrap.default.php app/Config/bootstrap.php; \
+    fi && \
+    if [ -f app/Config/database.default.php ]; then \
+        cp app/Config/database.default.php app/Config/database.php; \
+    fi && \
+    if [ -f app/Config/core.default.php ]; then \
+        cp app/Config/core.default.php app/Config/core.php; \
+    fi && \
+    if [ -f app/Config/config.default.php ]; then \
+        cp app/Config/config.default.php app/Config/config.php; \
+    fi
+
+# Copy entrypoint
+COPY docker/entrypoint-simple.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Expose port
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
+    CMD curl -f http://localhost/app/webroot/ || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["apache2-foreground"]

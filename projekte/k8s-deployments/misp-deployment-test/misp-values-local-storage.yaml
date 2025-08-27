@@ -1,0 +1,235 @@
+# MISP Values - Using Local Storage instead of Longhorn
+# For single control plane deployments where Longhorn has issues
+
+# Global configuration
+global:
+  imagePullSecrets: []
+
+# MISP Configuration
+misp:
+  replicaCount: 1
+  
+  # Container image settings
+  image:
+    repository: localhost:5000/misp
+    pullPolicy: IfNotPresent
+    tag: "latest"
+
+  # Service account
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {}
+
+  # MISP environment configuration
+  config:
+    admin:
+      email: admin@misp.local
+      password: "admin123"
+      orgName: "On-Premises Organization"
+    baseUrl: "http://rhostesk8s001.labwi.sva.de"
+    security:
+      saltKey: "change-me-in-production-salt-key-123456789"
+      enableCSP: false
+      disableSSLRedirect: true
+    workers:
+      default: 2
+      prio: 1
+      email: 1
+
+  # Resource limits
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+
+  # Persistence settings - USING LOCAL-PATH STORAGE
+  persistence:
+    enabled: true
+    storageClass: "local-path"  # RKE2's built-in storage
+    accessMode: ReadWriteOnce
+    size: 5Gi  # Reduced since it's local storage
+
+  # Security context
+  securityContext:
+    runAsUser: 33
+    runAsGroup: 33
+    fsGroup: 33
+    runAsNonRoot: true
+
+  # Container security context
+  containerSecurityContext:
+    runAsUser: 33
+    runAsGroup: 33
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+  # Probes
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 120
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 5
+
+  readinessProbe:
+    enabled: true
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 60
+    periodSeconds: 15
+    timeoutSeconds: 10
+    failureThreshold: 5
+
+  startupProbe:
+    enabled: true
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 0
+    periodSeconds: 15
+    timeoutSeconds: 10
+    failureThreshold: 40
+
+  # Environment variables
+  env:
+    - name: MYSQL_HOST
+      value: "misp-mariadb"
+    - name: MYSQL_DATABASE
+      value: "misp"
+    - name: MYSQL_USER
+      value: "misp"
+    - name: MYSQL_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: misp-mariadb
+          key: mariadb-password
+    - name: REDIS_HOST
+      value: "misp-redis-master"
+    - name: MISP_BASEURL
+      value: "http://rhostesk8s001.labwi.sva.de"
+    - name: MISP_ADMIN_EMAIL
+      value: "admin@misp.local"
+    - name: MISP_ADMIN_PASSWORD
+      value: "admin123"
+    - name: MISP_ORG_NAME
+      value: "On-Premises Organization"
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+  annotations: {}
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+  hosts:
+    - host: rhostesk8s001.labwi.sva.de
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Redis configuration - Single instance with local-path storage
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  architecture: standalone
+  master:
+    persistence:
+      enabled: true
+      storageClass: "local-path"  # Use local-path instead of longhorn
+      size: 1Gi
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "50m"
+      limits:
+        memory: "128Mi"
+        cpu: "100m"
+  replica:
+    replicaCount: 0
+  sentinel:
+    enabled: false
+
+# MariaDB configuration - Single instance with local-path storage
+mariadb:
+  enabled: true
+  auth:
+    rootPassword: "rootpassword123"
+    username: "misp"
+    password: "misppassword123"
+    database: "misp"
+  architecture: standalone
+  primary:
+    persistence:
+      enabled: true
+      storageClass: "local-path"  # Use local-path instead of longhorn
+      size: 2Gi
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "300m"
+  secondary:
+    replicaCount: 0
+
+# Node selector and tolerations for control plane
+nodeSelector:
+  node-role.kubernetes.io/control-plane: "true"
+
+tolerations:
+  - key: "node-role.kubernetes.io/control-plane"
+    operator: "Exists"
+    effect: "NoSchedule"
+  - key: "node-role.kubernetes.io/master"
+    operator: "Exists" 
+    effect: "NoSchedule"
+
+affinity: {}
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod labels
+podLabels: {}
+
+# Network Policy (disabled for testing)
+networkPolicy:
+  enabled: false
+
+# Autoscaling (disabled)
+autoscaling:
+  enabled: false
+
+# Init containers
+initContainers:
+  waitForDependencies:
+    enabled: true
+    image:
+      repository: busybox
+      tag: "1.36"
+      pullPolicy: IfNotPresent

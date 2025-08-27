@@ -1,0 +1,81 @@
+# MISP Test Deployment - Permission Fix
+# Override values to fix the chown permission error
+
+misp:
+  # Security context (pod-level) - use www-data after init
+  securityContext:
+    runAsUser: 33    # www-data user
+    runAsGroup: 33   # www-data group  
+    fsGroup: 33      # Files owned by www-data group
+    runAsNonRoot: true
+
+  # Container security context - secure for main container
+  containerSecurityContext:
+    runAsUser: 33
+    runAsGroup: 33
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+# Add init container to fix permissions
+initContainers:
+  # Wait for dependencies (existing)
+  waitForDependencies:
+    enabled: true
+    image:
+      repository: busybox
+      tag: "1.35"
+      pullPolicy: IfNotPresent
+  
+  # Fix volume permissions
+  fixPermissions:
+    enabled: true
+    image:
+      repository: busybox
+      tag: "1.35"
+      pullPolicy: IfNotPresent
+    securityContext:
+      runAsUser: 0      # Run as root to fix permissions
+      runAsGroup: 0
+      runAsNonRoot: false
+      capabilities:
+        add:
+          - CHOWN
+          - FOWNER
+        drop:
+          - ALL
+    command:
+      - /bin/sh
+      - -c
+      - |
+        echo "Fixing permissions on MISP data volumes..."
+        
+        # Create directories if they don't exist
+        mkdir -p /var/www/MISP/app/files
+        mkdir -p /var/www/MISP/app/tmp  
+        mkdir -p /var/www/MISP/app/Config
+        
+        # Fix ownership and permissions
+        chown -R 33:33 /var/www/MISP/app/files || true
+        chown -R 33:33 /var/www/MISP/app/tmp || true
+        chown -R 33:33 /var/www/MISP/app/Config || true
+        
+        # Set proper directory permissions
+        chmod 755 /var/www/MISP/app/files || true
+        chmod 755 /var/www/MISP/app/tmp || true
+        chmod 755 /var/www/MISP/app/Config || true
+        
+        echo "Permission fix completed"
+    volumeMounts:
+      - name: misp-data
+        mountPath: /var/www/MISP/app/files
+        subPath: files
+      - name: misp-data
+        mountPath: /var/www/MISP/app/tmp
+        subPath: tmp
+      - name: misp-data
+        mountPath: /var/www/MISP/app/Config
+        subPath: config

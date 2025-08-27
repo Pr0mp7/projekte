@@ -1,0 +1,57 @@
+# Ultra-minimal MISP Dockerfile for network-restricted environments
+# Uses pre-built PHP image with minimal additional downloads
+
+FROM php:8.2-apache
+
+# Set non-interactive mode
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install only essential packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    wget \
+    unzip \
+    libpng-dev \
+    libzip-dev \
+    libxml2-dev \
+    default-mysql-client \
+    supervisor \
+    && docker-php-ext-install \
+    pdo_mysql \
+    zip \
+    gd \
+    xml \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Composer quickly
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Download MISP
+WORKDIR /var/www/html
+RUN git clone --depth 1 --branch v2.4.190 https://github.com/MISP/MISP.git . \
+    && chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html
+
+# Install minimal PHP dependencies (skip if fails)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs || true
+
+# Configure Apache
+RUN a2enmod rewrite headers
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
+
+# Create basic directories
+RUN mkdir -p app/tmp/logs app/files app/Config \
+    && chown -R www-data:www-data app/tmp app/files app/Config
+
+# Simple entrypoint
+COPY docker/entrypoint-basic.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s \
+    CMD curl -f http://localhost/ || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["apache2-foreground"]

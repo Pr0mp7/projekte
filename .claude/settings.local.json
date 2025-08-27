@@ -22,7 +22,8 @@
       "Bash(git commit:*)",
       "Bash(claude mcp:*)",
       "Bash(grep:*)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": [],

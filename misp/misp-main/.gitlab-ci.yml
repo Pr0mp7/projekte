@@ -1,0 +1,63 @@
+# yaml-language-server: $schema=https://gitlab.com/gitlab-org/gitlab/-/raw/master/app/assets/javascripts/editor/schema/ci.json
+
+stages:
+  - prepare
+  - lint
+  - build
+  - test
+
+workflow:
+  rules:
+    # When a commit was pushed to a merge request
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    # When a SemVer-like tag was pushed (in-depth validation is performed in set-artifact-version)
+    - if: $CI_COMMIT_TAG && $CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+/
+
+include:
+  - project: jupiter8595746/ci-templates
+    ref: main
+    file:
+      - setup-git.yml
+      - set-artifact-version.yml
+      - helm.yml
+      - kyverno.yml
+
+set-artifact-version:
+  stage: prepare
+  extends: [.set-artifact-version]
+
+readme-generator:
+  stage: prepare
+  extends: [.push-helm-readme-generator-changes]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+lint:
+  stage: lint
+  extends: [.helm-lint]
+
+kyverno-pod-security-standards:
+  stage: lint
+  extends: [.kyverno-single]
+  variables:
+    KYVERNO_POLICIES: /etc/kyverno/policies/security
+  allow_failure: true
+
+kyverno-best-practice:
+  stage: lint
+  extends: [.kyverno-single]
+  variables:
+    KYVERNO_POLICIES: /etc/kyverno/policies/best-practice
+  allow_failure: true
+
+push-readme-generator-changes:
+  stage: build
+  extends:
+    - .setup-git
+    - .push-helm-readme-generator-changes
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+helm-package:
+  stage: build
+  extends: [.helm-package]

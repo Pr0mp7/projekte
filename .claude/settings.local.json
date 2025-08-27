@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(gh repo create:*)",
+      "Bash(cp:*)",
+      "Bash(git push:*)",
+      "Bash(mkdir:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebSearch",
+      "Bash(git pull:*)",
+      "Bash(git revert:*)",
+      "Bash(git init:*)",
+      "Bash(rm:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(chmod:*)",
+      "Bash(./deploy.sh:*)",
+      "Bash(kubectl:*)",
+      "Bash(md projektelonghorn)",
+      "Bash(md projekteingress-nginx)",
+      "Bash(git commit:*)",
+      "Bash(claude mcp:*)",
+      "Bash(grep:*)",
+      "Bash(git config:*)"
+    ],
+    "deny": [],
+    "ask": [],
+    "additionalDirectories": [
+      "C:\\Users\\avrljic\\Documents",
+      "C:\\c\\Users\\avrljic\\Documents\\Claude",
+      "C:\\c\\Users\\avrljic\\Documents"
+    ]
+  }
+}

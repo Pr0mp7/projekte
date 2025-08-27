@@ -1,0 +1,10 @@
+[Unit]
+Description=Timer for MISP log reading script
+
+[Timer]
+OnBootSec=5sec
+OnUnitActiveSec=2sec
+Unit=read-misp-logs.service
+
+[Install]
+WantedBy=timers.target

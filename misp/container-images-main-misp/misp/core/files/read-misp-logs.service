@@ -1,0 +1,14 @@
+[Unit]
+Description=Run MISP log reading script
+
+[Service]
+Type=simple
+Environment="MYSQL_USER=${MYSQL_USER}"
+Environment="MYSQL_HOST=${MYSQL_HOST}"
+Environment="MYSQL_DATABASE=${MYSQL_DATABASE}"
+ExecStart=/bin/bash -c '/var/www/MISP/read-misp-logs.sh "$MYSQL_USER" "$MYSQL_HOST" "$MYSQL_DATABASE" >> /var/www/MISP/app/tmp/logs/misp.log 2>&1'
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target

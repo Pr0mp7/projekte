@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=https://gitlab.com/gitlab-org/gitlab/-/raw/master/app/assets/javascripts/editor/schema/ci.json
+
+variables:
+  CORE_TAG: v2.4.214
+  MODULES_TAG: v2.4.188
+  PHP_VER: 20190902
+  LIBFAUP_COMMIT: 3a26d0a
+
+lint misp:
+  extends: [.hadolint]
+  variables:
+    DOCKERFILE: misp/core/Dockerfile
+
+build misp:
+  extends: [.build]
+  variables:
+    BUILD_ARGS: |
+        --build-arg CORE_TAG=${CORE_TAG}
+        --build-arg MODULES_TAG=${MODULES_TAG}
+        --build-arg PHP_VER=${PHP_VER}
+        --build-arg LIBFAUP_COMMIT=${LIBFAUP_COMMIT}
+    IMAGE: "${CI_REGISTRY_IMAGE}/misp:${ARTIFACT_VERSION}"
+    DOCKER_CONTEXT: "misp/core"
+
+scan misp:
+  extends: [.trivy-scan]
+  variables:
+    TRIVY_TIMEOUT: 15m
+    IMAGE: "${CI_REGISTRY_IMAGE}/misp:${ARTIFACT_VERSION}"

@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: misp-config
+  namespace: misp
+data:
+  MISP_ADMIN_EMAIL: "admin@admin.test"
+  MISP_LIVE: "1"
+  MISP_TIMEZONE: "Europe/Berlin"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: misp-nginx-config
+  namespace: misp
+data:
+  default.conf: |
+    server {
+        listen 80;
+        listen [::]:80;
+        server_name _;
+        
+        client_max_body_size 50M;
+        
+        root /var/www/MISP/app/webroot;
+        index index.php;
+        
+        location / {
+            try_files $uri $uri/ /index.php?$args;
+        }
+        
+        location ~ \.php$ {
+            include fastcgi_params;
+            fastcgi_pass 127.0.0.1:9000;
+            fastcgi_index index.php;
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            fastcgi_read_timeout 300;
+        }
+        
+        location ~ /\.ht {
+            deny all;
+        }
+    }
+  
+  nginx.conf: |
+    user www-data;
+    worker_processes auto;
+    pid /run/nginx.pid;
+    
+    events {
+        worker_connections 768;
+    }
+    
+    http {
+        sendfile on;
+        tcp_nopush on;
+        tcp_nodelay on;
+        keepalive_timeout 65;
+        types_hash_max_size 2048;
+        
+        include /etc/nginx/mime.types;
+        default_type application/octet-stream;
+        
+        access_log /var/log/nginx/access.log;
+        error_log /var/log/nginx/error.log;
+        
+        gzip on;
+        
+        include /etc/nginx/sites-enabled/*;
+    }

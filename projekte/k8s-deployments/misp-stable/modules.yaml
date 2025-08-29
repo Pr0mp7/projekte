@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: misp-modules
+  namespace: misp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: misp-modules
+  template:
+    metadata:
+      labels:
+        app: misp-modules
+    spec:
+      containers:
+      - name: misp-modules
+        image: ghcr.io/misp/misp-docker/misp-modules:v2.4.188
+        ports:
+        - containerPort: 6666
+          name: modules
+        resources:
+          requests:
+            memory: 128Mi
+            cpu: 100m
+          limits:
+            memory: 512Mi
+            cpu: 300m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: misp-modules
+  namespace: misp
+spec:
+  selector:
+    app: misp-modules
+  ports:
+  - port: 6666
+    targetPort: 6666
+    name: modules

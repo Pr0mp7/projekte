@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: misp-database
+  namespace: misp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: misp-database
+  template:
+    metadata:
+      labels:
+        app: misp-database
+    spec:
+      containers:
+      - name: mariadb
+        image: mariadb:10.11
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: misp-secrets
+              key: MYSQL_ROOT_PASSWORD
+        - name: MYSQL_DATABASE
+          value: misp
+        - name: MYSQL_USER
+          value: misp
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: misp-secrets
+              key: MYSQL_PASSWORD
+        ports:
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        - name: database-storage
+          mountPath: /var/lib/mysql
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 100m
+          limits:
+            memory: 1Gi
+            cpu: 500m
+      volumes:
+      - name: database-storage
+        persistentVolumeClaim:
+          claimName: misp-database-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: misp-database
+  namespace: misp
+spec:
+  selector:
+    app: misp-database
+  ports:
+  - port: 3306
+    targetPort: 3306
+    name: mysql

@@ -1,0 +1,183 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: misp-app
+  namespace: misp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: misp-app
+  template:
+    metadata:
+      labels:
+        app: misp-app
+    spec:
+      initContainers:
+      # Wait for database and redis to be ready
+      - name: wait-for-dependencies
+        image: busybox:1.35
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for database..."
+          until nc -z misp-database 3306; do sleep 2; done
+          echo "Waiting for Redis..."
+          until nc -z misp-redis 6379; do sleep 2; done
+          echo "Dependencies ready!"
+      
+      # Fix file permissions
+      - name: fix-permissions
+        image: ghcr.io/misp/misp-docker/misp-core:v2.4.188
+        command:
+        - /bin/bash
+        - -c
+        args:
+        - |
+          mkdir -p /var/www/MISP/app/files /var/www/MISP/app/tmp /var/www/MISP/app/Config
+          chown -R www-data:www-data /var/www/MISP/app/files /var/www/MISP/app/tmp /var/www/MISP/app/Config
+          chmod -R 755 /var/www/MISP/app/files /var/www/MISP/app/tmp /var/www/MISP/app/Config
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - name: misp-data
+          mountPath: /var/www/MISP/app/files
+      
+      containers:
+      - name: misp
+        image: ghcr.io/misp/misp-docker/misp-core:v2.4.188
+        ports:
+        - containerPort: 80
+          name: http
+        - containerPort: 443
+          name: https
+        env:
+        # Database configuration
+        - name: MYSQL_HOST
+          value: misp-database
+        - name: MYSQL_PORT
+          value: "3306"
+        - name: MYSQL_USER
+          value: misp
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: misp-secrets
+              key: MYSQL_PASSWORD
+        - name: MYSQL_DATABASE
+          value: misp
+        
+        # Redis configuration
+        - name: REDIS_HOST
+          value: misp-redis
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_DATABASE
+          value: "13"
+        
+        # MISP configuration
+        - name: MISP_ADMIN_EMAIL
+          valueFrom:
+            configMapKeyRef:
+              name: misp-config
+              key: MISP_ADMIN_EMAIL
+        - name: MISP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: misp-secrets
+              key: MISP_PASSWORD
+        - name: MISP_SALT
+          valueFrom:
+            secretKeyRef:
+              name: misp-secrets
+              key: MISP_SALT
+        - name: MISP_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: misp-secrets
+              key: MISP_SECRET
+        - name: MISP_LIVE
+          valueFrom:
+            configMapKeyRef:
+              name: misp-config
+              key: MISP_LIVE
+        
+        # Modules configuration
+        - name: MISP_MODULES_URL
+          value: http://misp-modules:6666
+        
+        # Base URL left empty to avoid CSRF issues
+        - name: BASE_URL
+          value: ""
+        - name: MISP_BASEURL
+          value: ""
+        
+        # SSL/Security configuration to avoid redirects
+        - name: DISABLE_SSL_REDIRECT
+          value: "true"
+        - name: NOREDIR_SSL
+          value: "true"
+        - name: DISABLE_SSL
+          value: "true"
+        
+        # Fix CSRF/Cookie issues
+        - name: PHP_SESSION_COOKIE_SECURE
+          value: "false"
+        - name: SECURITY_REQUIRE_SSL
+          value: "false"
+        
+        # Initialize database
+        - name: INIT_DB
+          value: "1"
+        
+        # Worker configuration (disabled for simplicity)
+        - name: WORKERS_DISABLE
+          value: "true"
+        
+        volumeMounts:
+        - name: misp-data
+          mountPath: /var/www/MISP/app/files
+        - name: nginx-config
+          mountPath: /etc/nginx/sites-available/default
+          subPath: default.conf
+        - name: nginx-config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 200m
+          limits:
+            memory: 2Gi
+            cpu: 1000m
+        
+        livenessProbe:
+          httpGet:
+            path: /users/login
+            port: 80
+            scheme: HTTP
+          initialDelaySeconds: 300
+          periodSeconds: 30
+          timeoutSeconds: 15
+          failureThreshold: 5
+        
+        readinessProbe:
+          httpGet:
+            path: /users/login
+            port: 80
+            scheme: HTTP
+          initialDelaySeconds: 120
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 3
+      
+      volumes:
+      - name: misp-data
+        persistentVolumeClaim:
+          claimName: misp-data
+      - name: nginx-config
+        configMap:
+          name: misp-nginx-config
+          defaultMode: 0644

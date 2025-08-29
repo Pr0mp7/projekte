@@ -1,0 +1,113 @@
+# Storage Class Options for Different Environments
+# Copy the appropriate section to your values.yaml
+
+# =================================
+# Option 1: Longhorn Storage (Recommended for RKE2 with Longhorn)
+# =================================
+misp:
+  persistence:
+    enabled: true
+    storageClass: "longhorn"
+    accessMode: ReadWriteOnce
+    size: 5Gi
+
+mariadb:
+  primary:
+    persistence:
+      enabled: true
+      storageClass: "longhorn"
+      size: 2Gi
+
+redis:
+  master:
+    persistence:
+      enabled: true
+      storageClass: "longhorn"
+      size: 1Gi
+
+# =================================
+# Option 2: Local-Path Storage (RKE2 Default)
+# =================================
+# misp:
+#   persistence:
+#     enabled: true
+#     storageClass: "local-path"
+#     accessMode: ReadWriteOnce
+#     size: 5Gi
+# 
+# mariadb:
+#   primary:
+#     persistence:
+#       enabled: true
+#       storageClass: "local-path"
+#       size: 2Gi
+# 
+# redis:
+#   master:
+#     persistence:
+#       enabled: true
+#       storageClass: "local-path"
+#       size: 1Gi
+
+# =================================
+# Option 3: Default Storage Class (Auto-detect)
+# =================================
+# misp:
+#   persistence:
+#     enabled: true
+#     storageClass: ""  # Use cluster default
+#     accessMode: ReadWriteOnce
+#     size: 5Gi
+# 
+# mariadb:
+#   primary:
+#     persistence:
+#       enabled: true
+#       storageClass: ""  # Use cluster default
+#       size: 2Gi
+# 
+# redis:
+#   master:
+#     persistence:
+#       enabled: true
+#       storageClass: ""  # Use cluster default
+#       size: 1Gi
+
+# =================================
+# Option 4: No Persistence (Testing Only)
+# =================================
+# misp:
+#   persistence:
+#     enabled: false
+# 
+# mariadb:
+#   primary:
+#     persistence:
+#       enabled: false
+# 
+# redis:
+#   master:
+#     persistence:
+#       enabled: false
+
+# =================================
+# Option 5: Mixed Storage (Advanced)
+# =================================
+# misp:
+#   persistence:
+#     enabled: true
+#     storageClass: "longhorn"  # Replicated storage for app data
+#     accessMode: ReadWriteOnce
+#     size: 5Gi
+# 
+# mariadb:
+#   primary:
+#     persistence:
+#       enabled: true
+#       storageClass: "longhorn"  # Replicated for database
+#       size: 2Gi
+# 
+# redis:
+#   master:
+#     persistence:
+#       enabled: false  # Memory only for cache

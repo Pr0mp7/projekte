@@ -1,0 +1,38 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: build-push-image-buildah-incluster1
+spec:
+  pipelineRef:
+    name: buildah-pipeline
+  podTemplate:
+    securityContext:
+      fsGroup: 65532
+  workspaces:
+    - name: shared-data
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+    - name: basic-auth
+      secret:
+        secretName: bibi-basic-auth
+    - name: dockerconfig
+      secret:
+        secretName: idp-incluster
+    - name: registries-conf
+      configMap:
+        name: registries-shortnames
+  params:
+    - name: git-url
+      value: http://gitea.gitea.svc.cluster.local/bn_user/python-app.git
+      #value: https://sina.tiab.labda.sva.de/bn_user/python-app.git
+    - name: branch-name
+      value: main
+    - name: verify-ssl
+      value: "false"
+    - name: image-name
+      value: "registry-docker-registry.registry.svc.cluster.local:5000/python-app/my-python-app:tekton-incluster"

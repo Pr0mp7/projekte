@@ -1,0 +1,78 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: buildah-pipeline
+spec:
+  params:
+    - name: git-url
+      type: string
+      description: Git repository URL
+    - name: branch-name
+      type: string
+      description: The git branch to clone.
+    - name: subdirectory
+      type: string
+      default: ""
+      description: Subdirectory to checkout
+    - name: delete-existing
+      type: string
+      default: "true"
+      description: Delete existing content
+    - name: image-name
+      type: string
+      description: Image name for Buildah to build and push
+    - name: verify-ssl
+      type: string
+      default: "false"
+      description: Verify ssl
+  workspaces:
+    - name: shared-data
+      description: |
+        This workspace will receive the cloned git repo and be passed
+        to the next Task for the repo's README.md file to be read.
+    - name: basic-auth
+      optional: true
+    - name: sslcertdir
+      optional: true
+    - name: dockerconfig
+      optional: true
+    - name: registries-conf
+      optional: true
+  tasks:
+    - name: fetch-repository
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: shared-data
+        - name: basic-auth
+          workspace: basic-auth
+      params:
+      - name: url
+        value: $(params.git-url)
+      - name: revision
+        value: $(params.branch-name)
+      - name: sslVerify
+        value: $(params.verify-ssl)
+      - name: subdirectory
+        value: $(params.subdirectory)
+      - name: deleteExisting
+        value: $(params.delete-existing)
+    - name: buildah
+      taskRef:
+        name: buildah
+      runAfter:
+        - fetch-repository
+      workspaces:
+        - name: source
+          workspace: shared-data
+        - name: dockerconfig
+          workspace: dockerconfig
+        - name: registries-conf
+          workspace: registries-conf
+      params:
+        - name: IMAGE
+          value: "$(params.image-name)"
+        - name: TLSVERIFY
+          value: $(params.verify-ssl)

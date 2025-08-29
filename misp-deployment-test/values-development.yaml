@@ -1,0 +1,112 @@
+# Development/Testing Values for MISP
+# This file contains common overrides for development and testing
+
+# Enable debug logging
+misp:
+  config:
+    admin:
+      email: "dev@misp.local"
+      password: "devpassword123"
+      orgName: "Development Team"
+    
+    baseUrl: "http://misp-dev.local"
+    
+    security:
+      saltKey: "dev-salt-key-not-secure"
+      disableSSLRedirect: true
+    
+    workers:
+      default: 1
+      prio: 1
+      email: 1
+
+  # Minimal resources for development
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  # Faster startup for development
+  startupProbe:
+    enabled: true
+    httpGet:
+      path: /
+      port: 8080
+    failureThreshold: 15
+    periodSeconds: 5
+    initialDelaySeconds: 0
+    timeoutSeconds: 3
+  
+  readinessProbe:
+    enabled: true
+    httpGet:
+      path: /
+      port: 8080
+    periodSeconds: 5
+    initialDelaySeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: /
+      port: 8080
+    periodSeconds: 15
+    initialDelaySeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# Development ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+  hosts:
+    - host: misp-dev.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+# Lightweight database for development
+mariadb:
+  auth:
+    rootPassword: "devroot"
+    username: "mispdev"
+    password: "mispdev123"
+    database: "mispdev"
+  primary:
+    persistence:
+      enabled: true  # Enable for consistency
+      storageClass: "longhorn"  # Use Longhorn consistently
+      size: 1Gi  # Smaller for development
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "50m"
+      limits:
+        memory: "256Mi"
+        cpu: "200m"
+
+# Lightweight Redis for development
+redis:
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true  # Enable for consistency
+      storageClass: "longhorn"  # Use Longhorn consistently
+      size: 512Mi  # Small for development
+    resources:
+      requests:
+        memory: "32Mi"
+        cpu: "25m"
+      limits:
+        memory: "64Mi"
+        cpu: "50m"

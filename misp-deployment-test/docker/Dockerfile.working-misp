@@ -1,0 +1,90 @@
+# Working MISP Dockerfile with proper Apache configuration
+FROM php:8.2-apache
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install essential packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    wget \
+    curl \
+    unzip \
+    default-mysql-client \
+    netcat-openbsd \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install PDO MySQL
+RUN docker-php-ext-install pdo_mysql
+
+# Copy Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Download MISP source to correct location
+WORKDIR /var/www/MISP
+RUN git clone --depth 1 --branch v2.4.190 https://github.com/MISP/MISP.git . \
+    && rm -rf .git
+
+# Configure Apache to serve MISP correctly
+RUN a2enmod rewrite headers \
+    && echo "ServerName localhost" >> /etc/apache2/apache2.conf
+
+# Create Apache virtual host for MISP
+RUN cat > /etc/apache2/sites-available/misp.conf << 'EOF'
+<VirtualHost *:80>
+    ServerName localhost
+    DocumentRoot /var/www/MISP/app/webroot
+    
+    <Directory /var/www/MISP/app/webroot>
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+    
+    LogLevel warn
+    ErrorLog ${APACHE_LOG_DIR}/misp_error.log
+    CustomLog ${APACHE_LOG_DIR}/misp_access.log combined
+</VirtualHost>
+EOF
+
+# Enable MISP site and disable default
+RUN a2ensite misp && a2dissite 000-default
+
+# Create MISP directories and set permissions
+RUN mkdir -p /var/www/MISP/app/tmp/logs \
+             /var/www/MISP/app/files \
+             /var/www/MISP/app/Config \
+    && chown -R www-data:www-data /var/www/MISP \
+    && chmod -R 755 /var/www/MISP
+
+# Create basic MISP config files
+RUN if [ -f /var/www/MISP/app/Config/bootstrap.default.php ]; then \
+        cp /var/www/MISP/app/Config/bootstrap.default.php /var/www/MISP/app/Config/bootstrap.php; \
+    fi && \
+    if [ -f /var/www/MISP/app/Config/database.default.php ]; then \
+        cp /var/www/MISP/app/Config/database.default.php /var/www/MISP/app/Config/database.php; \
+    fi && \
+    if [ -f /var/www/MISP/app/Config/core.default.php ]; then \
+        cp /var/www/MISP/app/Config/core.default.php /var/www/MISP/app/Config/core.php; \
+    fi && \
+    if [ -f /var/www/MISP/app/Config/config.default.php ]; then \
+        cp /var/www/MISP/app/Config/config.default.php /var/www/MISP/app/Config/config.php; \
+    fi
+
+# Basic PHP settings
+RUN echo "memory_limit = 512M" > /usr/local/etc/php/conf.d/misp.ini \
+    && echo "max_execution_time = 300" >> /usr/local/etc/php/conf.d/misp.ini \
+    && echo "upload_max_filesize = 50M" >> /usr/local/etc/php/conf.d/misp.ini \
+    && echo "post_max_size = 50M" >> /usr/local/etc/php/conf.d/misp.ini
+
+# Copy entrypoint
+COPY docker/entrypoint-working-misp.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s \
+    CMD curl -f http://localhost/ || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["apache2-foreground"]

@@ -1,189 +1,301 @@
-# Kubernetes Security Platform Deployment
+# Projekte - Unified Repository Collection
 
-A comprehensive collection of Kubernetes-based security platforms and infrastructure components designed for air-gapped RKE2 environments.
+This repository contains multiple sub-projects related to Shuffle automation platform, Kubernetes deployments, and CI/CD infrastructure.
 
-## 🏗️ Repository Structure
+## 📁 Repository Structure
 
 ```
-Claude/
-├── CLAUDE.md                    # Project configuration and instructions
-├── README.md                   # This file
-├── .gitignore                  # Git ignore patterns
-├── aws_s3_app.txt             # AWS S3 application notes
-├── misp/                      # MISP Threat Intelligence Platform
-│   ├── container-images-main-misp/  # Custom container builds
-│   └── misp-main/             # Production Helm chart
-└── projekte/                  # Main projects directory
-    ├── k8s-deployments/      # Kubernetes deployment configurations
-    │   ├── buildah-ci/       # CI/CD build pipelines
-    │   ├── buildah/          # Buildah configurations (duplicate)
-    │   ├── ingress-nginx/    # Ingress controller deployment
-    │   ├── longhorn/         # Distributed storage
-    │   ├── misp-deployment-test/ # MISP test deployment
-    │   └── shuffle-deployment/   # Shuffle SOAR platform
-    └── shuffle-apps/         # SOAR application collection
-        ├── aws_s3/          # AWS S3 & MinIO integration
-        ├── http/            # HTTP client (current v1.4.0)
-        ├── http-versions/   # Legacy HTTP versions
-        ├── qradar_app/      # IBM QRadar SIEM integration
-        └── test-app/        # SDK testing application
+projekte/
+├── README.md                    # This file
+├── longhorn/                    # Longhorn storage Helm chart
+│   ├── Chart.yaml               # Helm chart metadata
+│   └── values.yaml              # Longhorn configuration
+├── ingress-nginx/               # Ingress-NGINX Helm chart
+│   ├── Chart.yaml               # Helm chart metadata
+│   └── values.yaml              # NGINX ingress configuration
+├── shuffle-apps/                # Shuffle automation apps
+│   ├── README.md
+│   ├── aws_s3/                  # AWS S3 & MinIO integration
+│   ├── http/                    # HTTP client app
+│   ├── qradar_app/              # IBM QRadar SIEM integration
+│   ├── test-app/                # SDK testing app
+│   └── http-versions/           # Legacy HTTP app versions
+└── k8s-deployments/             # Kubernetes & CI/CD infrastructure
+    ├── README.md
+    ├── shuffle-deployment/      # Shuffle platform deployment
+    ├── buildah-ci/              # Container build pipelines
+    └── shuffle-apps/            # Additional apps for K8s
 ```
 
-## 🛡️ Security Platforms
+## 🚀 Sub-Projects Overview
 
-### MISP - Malware Information Sharing Platform
-- **Production**: `misp/misp-main/` - Enterprise-grade deployment with Vault integration
-- **Test Environment**: `projekte/k8s-deployments/misp-deployment-test/` - Simplified test deployment
-- **Container Images**: `misp/container-images-main-misp/` - Custom hardened containers
+### 🗄️ [RKE2 Helm Charts](./longhorn/) & [Ingress-NGINX](./ingress-nginx/)
 
-### Shuffle - Security Orchestration and Response
-- **Platform**: `projekte/k8s-deployments/shuffle-deployment/` - Complete SOAR platform
-- **Applications**: `projekte/shuffle-apps/` - Security automation apps
-  - HTTP Client v1.4.0 with full REST API support
-  - QRadar SIEM integration with 20+ actions
-  - AWS S3/MinIO storage operations
-  - Testing and development utilities
+**Essential infrastructure Helm charts for RKE2 clusters**
 
-## 🏗️ Infrastructure Components
+| Component | Version | Description | Purpose |
+|-----------|---------|-------------|---------|
+| Longhorn | 1.5.3 | Distributed block storage | Persistent storage for RKE2 |
+| Ingress-NGINX | 4.8.3 | Load balancer & ingress | External traffic routing |
 
-### Container Build Automation
-- **Buildah CI/CD**: `projekte/k8s-deployments/buildah-ci/` - Tekton-based build pipelines
-- **Air-gap Support**: Offline container builds and registry management
-- **Security Scanning**: Integrated vulnerability scanning and linting
+**Key Features:**
+- Production-ready Helm configurations
+- Optimized for RKE2 environments  
+- High availability setup
+- Comprehensive documentation
+- Security-focused configuration
 
-### Networking & Load Balancing
-- **Ingress-Nginx**: `projekte/k8s-deployments/ingress-nginx/` - SSL termination and routing
-- **Service Mesh Ready**: Prepared for advanced networking requirements
+**Deployment Commands:**
+```bash
+# Add repositories and deploy Longhorn storage
+helm repo add longhorn https://charts.longhorn.io && helm repo update
+helm install longhorn longhorn/longhorn --namespace longhorn-system --create-namespace --values longhorn/values.yaml
 
-### Storage Solution
-- **Longhorn**: `projekte/k8s-deployments/longhorn/` - Distributed block storage
-- **High Availability**: Multi-replica storage with automatic failover
-- **Backup Integration**: S3-compatible backup targets
+# Add repositories and deploy Ingress-NGINX
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx && helm repo update
+helm install nginx-custom ingress-nginx/ingress-nginx --namespace ingress-nginx-custom --create-namespace --values ingress-nginx/values.yaml
+```
+
+### 📱 [Shuffle Apps](./shuffle-apps/)
+
+**Collection of Shuffle automation applications**
+
+| App | Version | Description | Actions |
+|-----|---------|-------------|---------|
+| AWS S3 | 1.0.0 | AWS S3 and MinIO storage operations | 10 actions |
+| HTTP | 1.4.0 | HTTP client for web requests | 8 actions |
+| QRadar | 1.0.0 | IBM QRadar SIEM integration | 20+ actions |
+| Test App | 1.0.0 | SDK testing and development | 2 actions |
+
+**Key Features:**
+- Production-ready Shuffle apps
+- Complete API integrations
+- Docker containerization
+- Comprehensive documentation
+- Version management
+
+### 🏗️ [K8s Deployments](./k8s-deployments/)
+
+**Kubernetes deployment configurations and CI/CD pipelines**
+
+**Components:**
+- **Shuffle Platform Deployment**: Production-ready Helm configurations
+- **Buildah CI/CD Pipeline**: Tekton-based container build automation  
+- **Air-gapped Support**: Complete offline deployment capabilities
+- **Storage & Ingress**: Longhorn and Nginx configurations
+- **Security**: TLS/SSL and authentication setup
+
+**Key Features:**
+- Production Kubernetes deployment
+- Air-gapped environment support
+- Automated container build pipelines
+- Security-focused configuration
+- Comprehensive infrastructure documentation
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- RKE2 Kubernetes cluster
-- Helm 3.x installed
-- kubectl configured
-- Container registry (for air-gapped environments)
+### For Shuffle App Development
+```bash
+cd shuffle-apps
+# See shuffle-apps/README.md for detailed instructions
+```
 
-### Basic Deployment Order
+### For Infrastructure Deployment
+```bash
+cd k8s-deployments
+# See k8s-deployments/README.md for deployment guides
+```
 
-1. **Storage Foundation**
-   ```bash
-   # Deploy Longhorn storage
-   helm upgrade --install longhorn longhorn/longhorn \
-     --namespace longhorn-system --create-namespace \
-     --values projekte/k8s-deployments/longhorn/values.yaml
-   ```
+## 🔧 Available Applications
 
-2. **Ingress Controller**
-   ```bash
-   # Deploy ingress-nginx
-   helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
-     --namespace ingress-nginx --create-namespace \
-     --values projekte/k8s-deployments/ingress-nginx/ingress-nginx-values.yaml
-   ```
+### Security Operations
+- **QRadar App**: Complete IBM QRadar SIEM integration
+  - Offense management and investigation
+  - Rule configuration and monitoring
+  - Ariel search engine capabilities
+  - Custom API request support
 
-3. **Security Platforms**
-   ```bash
-   # Deploy MISP (test environment)
-   cd projekte/k8s-deployments/misp-deployment-test/
-   helm install misp-test . --namespace misp-test --create-namespace
-   
-   # Deploy Shuffle SOAR
-   cd ../shuffle-deployment/
-   helm install shuffle . --namespace shuffle --create-namespace \
-     --values shuffle-values.yaml
-   ```
+### Storage & Data Management
+- **AWS S3 App**: Comprehensive cloud storage operations
+  - Multi-cloud support (AWS S3, MinIO)
+  - Bucket lifecycle management
+  - File operations and access control
+  - Air-gapped environment support
 
-## 🔧 Configuration
+### Network & Communication
+- **HTTP App**: Flexible web request automation
+  - Full REST API support
+  - Authentication and proxy support
+  - SSL/TLS configuration
+  - Response formatting options
 
-### Air-Gapped Environment Setup
-- Configure local container registry
-- Update image references in values files
-- Set up offline Helm chart repositories
-- Configure network policies for security
+### Development & Testing
+- **Test App**: SDK functionality validation
+  - Feature testing capabilities
+  - Development environment setup
+  - Integration validation
 
-### Storage Classes
-- **Default**: Longhorn with 3 replicas
-- **Fast**: SSD-backed storage for databases
-- **Backup**: S3-compatible backup storage
+## 🏭 Infrastructure Capabilities
 
-### Network Configuration
-- **Ingress**: SSL/TLS termination with security headers
-- **Network Policies**: Microsegmentation between namespaces
-- **Service Mesh**: Ready for Istio/Linkerd integration
+### Deployment Options
+- **Cloud-native**: Full Kubernetes deployment
+- **Air-gapped**: Offline installation support
+- **Hybrid**: Mixed environment compatibility
+- **Development**: Local testing configurations
 
-## 📚 Documentation
+### CI/CD Pipeline
+- **Container Building**: Buildah-based image construction
+- **Multi-architecture**: Support for different platforms
+- **Security Scanning**: Vulnerability assessment
+- **Automated Testing**: Pull request validation
+- **Registry Integration**: Private/public registry support
 
-Comprehensive technical documentation is available in the Obsidian knowledge base:
+### Storage Solutions
+- **Longhorn**: Distributed block storage
+- **Persistent Volumes**: Application data persistence
+- **Backup & Recovery**: Data protection strategies
+- **High Availability**: Fault-tolerant storage
 
-- **[[00-Project-Overview]]** - Architecture and overview
-- **[[MISP-Deployment]]** - Complete MISP deployment guide
-- **[[Shuffle-Apps]]** - SOAR applications documentation
-- **[[Kubernetes-Deployments]]** - Infrastructure deployment patterns
-- **[[Buildah-CICD]]** - Container build automation
-- **[[Longhorn-Storage]]** - Storage system configuration
-- **[[Ingress-Nginx]]** - Load balancer and ingress setup
+## 📖 Documentation
 
-## 🔐 Security Features
+Each sub-project contains comprehensive documentation:
 
-### Container Security
-- Multi-stage builds for minimal attack surface
-- Non-root user execution
-- Read-only root filesystems
-- Security context enforcement
-
-### Network Security
-- Network policies for traffic isolation
-- TLS encryption for all communications
-- Security headers via ingress
-- Certificate management automation
-
-### Platform Security
-- RBAC configuration
-- Pod Security Standards enforcement
-- Secret management integration
-- Audit logging capabilities
+- **[Shuffle Apps Documentation](./shuffle-apps/README.md)**: App development, deployment, and usage
+- **[K8s Deployments Documentation](./k8s-deployments/README.md)**: Infrastructure setup and management
 
 ## 🛠️ Development Workflow
 
-### CI/CD Pipeline
-1. **Code Commit** → Git repository
-2. **Build Trigger** → Tekton pipeline activation
-3. **Container Build** → Buildah rootless builds
-4. **Security Scan** → Vulnerability assessment
-5. **Registry Push** → Secure container storage
-6. **Deployment** → Automated Kubernetes deployment
+### Adding New Shuffle Apps
+1. Navigate to `shuffle-apps/` directory
+2. Create app directory with standard structure
+3. Follow the app development guidelines
+4. Update the main README with app information
 
-### Testing Strategy
-- Unit tests for application logic
-- Integration tests for platform components
-- Security tests for compliance
-- Performance tests for scalability
+### Infrastructure Updates
+1. Navigate to `k8s-deployments/` directory
+2. Update relevant configuration files
+3. Test in development environment
+4. Update deployment documentation
+
+## 🔒 Security Considerations
+
+### Application Security
+- Secure API key management
+- SSL/TLS enforcement
+- Input validation and sanitization
+- Access control and authentication
+
+### Infrastructure Security
+- Network segmentation
+- Pod security policies
+- Registry authentication
+- Secret management
+- TLS termination at ingress
+
+### Air-gapped Environment
+- Complete offline capability
+- No external dependencies during runtime
+- Pre-validated image manifests
+- Secure internal communication
+
+## 📊 Monitoring & Observability
+
+### Application Monitoring
+- Health check endpoints
+- Performance metrics collection
+- Error tracking and alerting
+- Usage analytics
+
+### Infrastructure Monitoring
+- Cluster resource utilization
+- Node health monitoring
+- Storage performance metrics
+- Network traffic analysis
 
 ## 🤝 Contributing
 
-1. Follow the established directory structure
-2. Update documentation for any changes
-3. Ensure all deployments work in air-gapped environments
-4. Add appropriate security contexts and policies
-5. Test thoroughly in RKE2 environment
+### Code Contributions
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add appropriate tests
+5. Update documentation
+6. Submit a pull request
+
+### Documentation Improvements
+- Fix typos and grammar
+- Add usage examples
+- Improve explanations
+- Update screenshots
+
+### Bug Reports
+- Use the issue tracker
+- Provide detailed reproduction steps
+- Include environment information
+- Attach relevant logs
+
+## 📋 Requirements
+
+### Development Environment
+- **Docker**: v20.10+
+- **Git**: v2.30+
+- **Python**: v3.8+ (for Shuffle apps)
+- **kubectl**: v1.20+ (for Kubernetes)
+- **Helm**: v3.8+ (for deployments)
+
+### Production Environment
+- **Kubernetes**: v1.20+
+- **Container Runtime**: Docker or containerd
+- **Storage**: CSI-compatible storage driver
+- **Networking**: CNI-compatible network plugin
+- **Ingress Controller**: Nginx or compatible
+
+## 🆘 Support & Troubleshooting
+
+### Common Issues
+- Check individual project READMEs
+- Review deployment logs
+- Validate configuration files
+- Verify resource requirements
+
+### Getting Help
+- GitHub Issues for bug reports
+- Discussions for questions
+- Wiki for additional documentation
+- Community Discord/Slack channels
+
+## 📅 Roadmap
+
+### Planned Features
+- Additional Shuffle app integrations
+- Enhanced CI/CD pipeline features
+- Improved monitoring capabilities
+- Extended air-gapped support
+- Performance optimizations
+
+### Version Management
+- Semantic versioning for all components
+- Compatibility matrices
+- Upgrade guides
+- Migration tools
 
 ## 📝 License
 
-This project follows enterprise security best practices and is designed for internal deployment in secure environments.
+This project is licensed under the terms specified in each sub-project directory.
 
-## 🆘 Support
+## 🏷️ Tags
 
-For issues and troubleshooting:
-- Check the comprehensive documentation in Obsidian
-- Review deployment logs and Kubernetes events
-- Verify network policies and security contexts
-- Ensure proper RBAC permissions
+`kubernetes` `shuffle` `automation` `security` `siem` `qradar` `aws-s3` `http` `docker` `helm` `tekton` `buildah` `ci-cd` `air-gapped` `monitoring` `observability`
 
 ---
 
-**Generated with Claude Code** - AI-assisted infrastructure development
+🤖 **Generated with [Claude Code](https://claude.ai/code)**
+
+**Co-Authored-By: Claude <noreply@anthropic.com>**
+
+---
+
+## 📚 Sub-Project Navigation
+
+- **📱 [Go to Shuffle Apps →](./shuffle-apps/)**
+- **🏗️ [Go to K8s Deployments →](./k8s-deployments/)**
